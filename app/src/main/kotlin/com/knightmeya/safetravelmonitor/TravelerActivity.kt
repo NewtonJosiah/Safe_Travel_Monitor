@@ -111,14 +111,23 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
     private fun startJourney() {
+        val monitorId = binding.etMonitorId.text.toString().trim()
+        if (monitorId.isEmpty()) {
+            Toast.makeText(this, "Please enter a Monitor ID", Toast.LENGTH_SHORT).show()
+            return
+        }
+
         val id = UUID.randomUUID().toString()
         journeyId = id
         isJourneyActive = true
         journeyStartTime = System.currentTimeMillis()
 
-        // Save journey ID for the background service
-        getSharedPreferences("SafeTravelPrefs", Context.MODE_PRIVATE)
-            .edit().putString("active_journey_id", id).apply()
+        // Save journey ID and monitor ID for the background service
+        val prefs = getSharedPreferences("SafeTravelPrefs", Context.MODE_PRIVATE)
+        prefs.edit()
+            .putString("active_journey_id", id)
+            .putString("monitor_id", monitorId)
+            .apply()
 
         val journey = Journey(
             id = id,
@@ -129,9 +138,9 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
             travelMode = travelMode
         )
 
-        // Push to Firebase
-        database.child("journeys").child(id).setValue(journey)
-        sendFirebaseNotification(id, "Journey Started", "Traveler is on the way!", NotificationType.JOURNEY_STARTED)
+        // Push to Firebase under the monitor ID
+        database.child("monitor_journeys").child(monitorId).child(id).setValue(journey)
+        sendFirebaseNotification(monitorId, id, "Journey Started", "Traveler is on the way!", NotificationType.JOURNEY_STARTED)
 
         binding.selectionLayout.visibility = android.view.View.GONE
         binding.activeLayout.visibility = android.view.View.VISIBLE
@@ -143,9 +152,12 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
     private fun endJourney() {
+        val monitorId = getSharedPreferences("SafeTravelPrefs", Context.MODE_PRIVATE).getString("monitor_id", null)
         journeyId?.let { id ->
-            database.child("journeys").child(id).child("isActive").setValue(false)
-            sendFirebaseNotification(id, "Safe Arrival", "Traveler has reached the destination!", NotificationType.SAFE_ARRIVAL)
+            if (monitorId != null) {
+                database.child("monitor_journeys").child(monitorId).child(id).child("isActive").setValue(false)
+                sendFirebaseNotification(monitorId, id, "Safe Arrival", "Traveler has reached the destination!", NotificationType.SAFE_ARRIVAL)
+            }
         }
         
         isJourneyActive = false
@@ -156,13 +168,16 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
     private fun sendEmergencyAlert() {
+        val monitorId = getSharedPreferences("SafeTravelPrefs", Context.MODE_PRIVATE).getString("monitor_id", null)
         journeyId?.let { id ->
-            sendFirebaseNotification(id, "🚨 EMERGENCY", "Traveler needs help!", NotificationType.EMERGENCY_ALERT)
-            Toast.makeText(this, "EMERGENCY ALERT SENT!", Toast.LENGTH_LONG).show()
+            if (monitorId != null) {
+                sendFirebaseNotification(monitorId, id, "🚨 EMERGENCY", "Traveler needs help!", NotificationType.EMERGENCY_ALERT)
+                Toast.makeText(this, "EMERGENCY ALERT SENT!", Toast.LENGTH_LONG).show()
+            }
         }
     }
 
-    private fun sendFirebaseNotification(journeyId: String, title: String, message: String, type: NotificationType) {
+    private fun sendFirebaseNotification(monitorId: String, journeyId: String, title: String, message: String, type: NotificationType) {
         val notification = Notification(
             id = UUID.randomUUID().toString(),
             title = title,
@@ -170,7 +185,7 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
             timestamp = System.currentTimeMillis(),
             type = type.name
         )
-        database.child("notifications").child(journeyId).push().setValue(notification)
+        database.child("notifications").child(monitorId).child(journeyId).push().setValue(notification)
     }
 
     private fun startLocationTracking() {

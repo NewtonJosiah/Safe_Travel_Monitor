@@ -3306,6 +3306,7 @@ id btnDriving
 id btnEmergency
 id btnEndJourney
 id btnStartJourney
+id btnStartMonitoring
 id btnTransit
 id btnWalking
 id buttonPanel
@@ -3391,6 +3392,8 @@ id endToStart
 id enterAlways
 id enterAlwaysCollapsed
 id escape
+id etMonitorId
+id etTravelerId
 id etaPanel
 id exitUntilCollapsed
 id expand_activities_button
@@ -3436,6 +3439,7 @@ id hybrid
 id icon
 id icon_group
 id icon_only
+id idInputCard
 id ifRoom
 id ignore
 id ignoreRequest
@@ -3493,6 +3497,7 @@ id message
 id middle
 id mini
 id monitorButton
+id monitorInputLayout
 id monitorMap
 id month_grid
 id month_navigation_bar
@@ -3651,6 +3656,7 @@ id startToEnd
 id startVertical
 id staticLayout
 id staticPostLayout
+id statusCard
 id step1
 id stop
 id stretch

@@ -21,6 +21,7 @@ class LocationTrackingService : Service() {
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var locationCallback: LocationCallback
     private var journeyId: String? = null
+    private var monitorId: String? = null
     private val database = FirebaseDatabase.getInstance().reference
     
     private val NOTIFICATION_ID = 1
@@ -31,8 +32,9 @@ class LocationTrackingService : Service() {
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
         createNotificationChannel()
         
-        journeyId = getSharedPreferences("SafeTravelPrefs", Context.MODE_PRIVATE)
-            .getString("active_journey_id", null)
+        val prefs = getSharedPreferences("SafeTravelPrefs", Context.MODE_PRIVATE)
+        journeyId = prefs.getString("active_journey_id", null)
+        monitorId = prefs.getString("monitor_id", null)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -70,14 +72,16 @@ class LocationTrackingService : Service() {
             override fun onLocationResult(locationResult: LocationResult) {
                 locationResult.lastLocation?.let { location ->
                     // Update Firebase
-                    journeyId?.let { id ->
+                    val jId = journeyId
+                    val mId = monitorId
+                    if (jId != null && mId != null) {
                         val update = LocationUpdate(
                             latitude = location.latitude,
                             longitude = location.longitude,
                             accuracy = location.accuracy,
                             timestamp = System.currentTimeMillis()
                         )
-                        database.child("locations").child(id).setValue(update)
+                        database.child("monitor_locations").child(mId).child(jId).setValue(update)
                     }
 
                     // Also send local broadcast

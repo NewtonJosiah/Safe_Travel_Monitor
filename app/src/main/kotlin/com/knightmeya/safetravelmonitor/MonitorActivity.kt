@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.view.View
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.gms.maps.CameraUpdateFactory
@@ -49,12 +50,33 @@ class MonitorActivity : AppCompatActivity(), OnMapReadyCallback {
 
     override fun onMapReady(googleMap: GoogleMap) {
         mMap = googleMap
+        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(0.0, 0.0), 2f))
+    }
+
+    private fun setupUI() {
+        adapter = NotificationAdapter(notifications)
+        binding.rvNotifications.layoutManager = LinearLayoutManager(this)
+        binding.rvNotifications.adapter = adapter
+
+        binding.btnStartMonitoring.setOnClickListener {
+            val travelerId = binding.etTravelerId.text.toString().trim()
+            if (travelerId.isNotEmpty()) {
+                initMonitoring(travelerId)
+            } else {
+                Toast.makeText(this, "Please enter a Traveler ID", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun initMonitoring(monitorId: String) {
+        binding.idInputCard.visibility = View.GONE
+        binding.statusCard.visibility = View.VISIBLE
         
-        // Listen for the most recent journey
-        database.child("journeys").limitToLast(1).addChildEventListener(object : ChildEventListener {
+        // Listen for the most recent journey under this specific monitor ID
+        database.child("monitor_journeys").child(monitorId).limitToLast(1).addChildEventListener(object : ChildEventListener {
             override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
                 val journey = snapshot.getValue(Journey::class.java)
-                journey?.let { startMonitoring(it) }
+                journey?.let { startMonitoring(monitorId, it) }
             }
 
             override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
@@ -70,13 +92,7 @@ class MonitorActivity : AppCompatActivity(), OnMapReadyCallback {
         })
     }
 
-    private fun setupUI() {
-        adapter = NotificationAdapter(notifications)
-        binding.rvNotifications.layoutManager = LinearLayoutManager(this)
-        binding.rvNotifications.adapter = adapter
-    }
-
-    private fun startMonitoring(journey: Journey) {
+    private fun startMonitoring(monitorId: String, journey: Journey) {
         isMonitoring = true
         estimatedArrivalTime = journey.estimatedArrivalTime
         
@@ -86,7 +102,7 @@ class MonitorActivity : AppCompatActivity(), OnMapReadyCallback {
         mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(dest, 12f))
         
         // Listen for location updates
-        database.child("locations").child(journey.id).addValueEventListener(object : ValueEventListener {
+        database.child("monitor_locations").child(monitorId).child(journey.id).addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 val loc = snapshot.getValue(LocationUpdate::class.java)
                 loc?.let { 
@@ -97,7 +113,7 @@ class MonitorActivity : AppCompatActivity(), OnMapReadyCallback {
         })
 
         // Listen for notifications
-        database.child("notifications").child(journey.id).addChildEventListener(object : ChildEventListener {
+        database.child("notifications").child(monitorId).child(journey.id).addChildEventListener(object : ChildEventListener {
             override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
                 val note = snapshot.getValue(Notification::class.java)
                 note?.let { addNotification(it) }
@@ -108,12 +124,15 @@ class MonitorActivity : AppCompatActivity(), OnMapReadyCallback {
             override fun onCancelled(error: DatabaseError) {}
         })
 
+        binding.activeJourneyInfo.visibility = View.VISIBLE
         startCountdownTimer()
     }
 
     private fun stopMonitoring() {
         isMonitoring = false
-        binding.activeJourneyInfo.visibility = View.GONE
+        // Keep the UI visible but show that it's ended
+        binding.tvRemainingTimeLabel.text = "Journey Ended"
+        binding.tvRemainingTime.text = "00:00"
     }
 
     private fun addNotification(notification: Notification) {
@@ -134,10 +153,10 @@ class MonitorActivity : AppCompatActivity(), OnMapReadyCallback {
                     binding.tvRemainingTime.text = String.format(Locale.getDefault(), "%02d:%02d", minutes, remSeconds)
                     
                     if (remainingMillis < 0) {
-                        binding.overdueWarning.visibility = android.view.View.VISIBLE
+                        binding.overdueWarning.visibility = View.VISIBLE
                         binding.tvRemainingTime.setTextColor(getColor(R.color.destructive))
                     } else {
-                        binding.overdueWarning.visibility = android.view.View.GONE
+                        binding.overdueWarning.visibility = View.GONE
                         binding.tvRemainingTime.setTextColor(getColor(R.color.traveler_header_start))
                     }
                     
@@ -150,7 +169,7 @@ class MonitorActivity : AppCompatActivity(), OnMapReadyCallback {
     fun onTravelerLocationUpdate(location: LatLng) {
         locationPath.add(location)
         
-        // Update marker
+        // Update marker (could optimize to only show current)
         mMap.addMarker(MarkerOptions().position(location).title("Current Location"))
         
         if (locationPath.size > 1) {

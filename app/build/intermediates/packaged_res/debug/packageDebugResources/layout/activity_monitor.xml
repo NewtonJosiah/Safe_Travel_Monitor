@@ -55,13 +55,57 @@
             android:orientation="vertical"
             android:padding="16dp">
 
-            <!-- Journey Status Card -->
+            <!-- ID Input Card -->
             <androidx.cardview.widget.CardView
+                android:id="@+id/idInputCard"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 app:cardCornerRadius="16dp"
                 app:cardElevation="2dp"
-                android:layout_marginBottom="16dp">
+                android:layout_marginBottom="16dp"
+                android:visibility="visible">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="20dp">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Enter Traveler ID to Monitor"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:layout_marginBottom="16dp" />
+                    <com.google.android.material.textfield.TextInputLayout
+                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="16dp">
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/etTravelerId"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:hint="e.g. 0712345678"
+                            android:inputType="phone" />
+                    </com.google.android.material.textfield.TextInputLayout>
+                    <Button
+                        android:id="@+id/btnStartMonitoring"
+                        android:layout_width="match_parent"
+                        android:layout_height="56dp"
+                        android:text="Start Monitoring"
+                        app:cornerRadius="12dp" />
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- Journey Status Card -->
+            <androidx.cardview.widget.CardView
+                android:id="@+id/statusCard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="2dp"
+                android:layout_marginBottom="16dp"
+                android:visibility="gone">
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"

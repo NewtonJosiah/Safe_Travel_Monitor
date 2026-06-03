@@ -197,6 +197,35 @@
                     </LinearLayout>
                 </LinearLayout>
 
+                <!-- Monitor Selection -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="MONITOR'S PHONE / ID"
+                    android:textSize="12sp"
+                    android:textColor="@color/muted_foreground"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="8dp" />
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/monitorInputLayout"
+                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="16dp"
+                    app:boxCornerRadiusBottomEnd="12dp"
+                    app:boxCornerRadiusBottomStart="12dp"
+                    app:boxCornerRadiusTopEnd="12dp"
+                    app:boxCornerRadiusTopStart="12dp">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etMonitorId"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="Enter Monitor ID or Phone"
+                        android:inputType="phone" />
+                </com.google.android.material.textfield.TextInputLayout>
+
                 <!-- Start Button -->
                 <Button
                     android:id="@+id/btnStartJourney"
