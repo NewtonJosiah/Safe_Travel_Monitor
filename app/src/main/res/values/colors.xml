@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="primary">#030213</color>
+    <color name="primary_foreground">#FFFFFF</color>
+    <color name="secondary">#ECECF0</color>
+    <color name="secondary_foreground">#030213</color>
+    <color name="background">#FFFFFF</color>
+    <color name="foreground">#030213</color>
+    <color name="destructive">#D4183D</color>
+    <color name="destructive_foreground">#FFFFFF</color>
+    <color name="muted">#ECECF0</color>
+    <color name="muted_foreground">#717182</color>
+    <color name="accent">#E9EBEF</color>
+    <color name="border">#1A000000</color>
+
+    <!-- Traveler Specific -->
+    <color name="traveler_header_start">#2563EB</color>
+    <color name="traveler_header_end">#4F46E5</color>
+    <color name="active_journey_bg">#F0FDF4</color>
+    <color name="active_journey_border">#22C55E</color>
+
+    <!-- Monitor Specific -->
+    <color name="monitor_header_start">#9333EA</color>
+    <color name="monitor_header_end">#DB2777</color>
+    <color name="overdue_bg">#FEF2F2</color>
+    <color name="overdue_border">#EF4444</color>
+</resources>

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "897530494352",
+    "project_id": "safe-travel-monitor",
+    "storage_bucket": "safe-travel-monitor.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:897530494352:android:51ffaa10be957b426d8715",
+        "android_client_info": {
+          "package_name": "com.knightmeya.safetravelmonitor"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyByfYiRjV7Ok84LpnxkRR-xmirnUtzYIVc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

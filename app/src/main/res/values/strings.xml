@@ -1,0 +1,29 @@
+<resources>
+    <string name="app_name">Safe Travel Monitor</string>
+    <string name="safe_travel">Safe Travel</string>
+    <string name="traveler_interface">Traveler Interface</string>
+    <string name="monitor_interface">Monitor Interface</string>
+    <string name="select_destination">Select destination</string>
+    <string name="travel_mode">TRAVEL MODE</string>
+    <string name="walking">Walking</string>
+    <string name="driving">Driving</string>
+    <string name="transit">Transit</string>
+    <string name="distance">DISTANCE</string>
+    <string name="time">TIME</string>
+    <string name="start_journey">Start Journey</string>
+    <string name="journey_in_progress">Journey in Progress</string>
+    <string name="started_at">Started: %1$s</string>
+    <string name="eta">ETA: %1$s</string>
+    <string name="time_elapsed">Time Elapsed: %1$s</string>
+    <string name="emergency">EMERGENCY</string>
+    <string name="end_journey_safely">End Journey Safely</string>
+    <string name="journey_status">Journey Status</string>
+    <string name="active_journey">Active Journey</string>
+    <string name="overdue_warning">⚠️ Traveler has not arrived!</string>
+    <string name="time_remaining">Time Remaining</string>
+    <string name="live_location">Live Location</string>
+    <string name="notifications">Notifications</string>
+    <string name="i_am_traveling">I AM TRAVELING</string>
+    <string name="i_am_monitoring">I AM MONITORING</string>
+    <string name="safety_priority">Your safety is our priority</string>
+</resources>

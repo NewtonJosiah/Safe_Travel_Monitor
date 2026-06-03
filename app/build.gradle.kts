@@ -1,16 +1,17 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.google.services)
 }
 
 android {
-    namespace = "com.safetravelmonitor.app"
-    compileSdk = 35
+    namespace = "com.knightmeya.safetravelmonitor"
+    compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.safetravelmonitor.app"
+        applicationId = "com.knightmeya.safetravelmonitor"
         minSdk = 24
-        targetSdk = 35
+        targetSdk = 34
         versionCode = 1
         versionName = "1.0"
 
@@ -26,12 +27,18 @@ android {
             )
         }
     }
+    buildFeatures {
+        viewBinding = true
+    }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
-    kotlinOptions {
-        jvmTarget = "11"
+}
+
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
     }
 }
 
@@ -42,6 +49,7 @@ dependencies {
     implementation(libs.androidx.activity)
     implementation(libs.androidx.constraintlayout)
     implementation(libs.play.services.maps)
+    implementation(libs.play.services.location)
     
     // Firebase
     implementation(platform(libs.firebase.bom))
