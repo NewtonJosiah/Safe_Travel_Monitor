@@ -31,6 +31,13 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
+        if (!currentUser.isEmailVerified) {
+            Toast.makeText(this, "Please verify your email to continue", Toast.LENGTH_LONG).show()
+            startActivity(Intent(this, LoginActivity::class.java))
+            finish()
+            return
+        }
+
         try {
             binding = ActivityMainBinding.inflate(layoutInflater)
             setContentView(binding.root)

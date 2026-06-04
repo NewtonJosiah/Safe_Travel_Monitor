@@ -4,7 +4,6 @@ import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import com.google.firebase.auth.AuthResult
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 import com.knightmeya.safetravelmonitor.databinding.ActivitySignupBinding
@@ -26,6 +25,7 @@ class SignupActivity : AppCompatActivity() {
         }
 
         binding.tvLoginLink.setOnClickListener {
+            startActivity(Intent(this, LoginActivity::class.java))
             finish()
         }
     }
@@ -42,28 +42,33 @@ class SignupActivity : AppCompatActivity() {
         }
 
         auth.createUserWithEmailAndPassword(email, password)
-            .addOnSuccessListener { authResult: AuthResult ->
-                val uid = authResult.user?.uid ?: return@addOnSuccessListener
-                val numericId = (10000000..99999999).random().toString()
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    val firebaseUser = task.result?.user
+                    val uid = firebaseUser?.uid ?: return@addOnCompleteListener
+                    val numericId = (10000000..99999999).random().toString()
+                    
+                    val user = User(
+                        uid = uid,
+                        numericId = numericId,
+                        name = name,
+                        email = email,
+                        phone = phone
+                    )
 
-                val user = User(
-                    uid = uid,
-                    numericId = numericId,
-                    name = name,
-                    email = email,
-                    phone = phone
-                )
-
-                database.child("users").child(uid).setValue(user)
-                    .addOnSuccessListener {
-                        database.child("id_to_uid").child(numericId).setValue(uid)
-                        Toast.makeText(this, "Account created! Your ID is: $numericId", Toast.LENGTH_LONG).show()
-                        startActivity(Intent(this, MainActivity::class.java))
-                        finish()
-                    }
-            }
-            .addOnFailureListener {
-                Toast.makeText(this, "Signup failed: ${it.message}", Toast.LENGTH_SHORT).show()
+                    database.child("users").child(uid).setValue(user)
+                        .addOnSuccessListener {
+                            database.child("id_to_uid").child(numericId).setValue(uid)
+                            
+                            firebaseUser.sendEmailVerification().addOnCompleteListener {
+                                Toast.makeText(this, "Account created! Please verify your email sent to $email", Toast.LENGTH_LONG).show()
+                                startActivity(Intent(this, LoginActivity::class.java))
+                                finish()
+                            }
+                        }
+                } else {
+                    Toast.makeText(this, "Signup failed: ${task.exception?.message}", Toast.LENGTH_SHORT).show()
+                }
             }
     }
 }

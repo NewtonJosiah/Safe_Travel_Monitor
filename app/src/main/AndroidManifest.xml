@@ -50,6 +50,10 @@
             android:exported="true" />
 
         <activity
+            android:name=".LoginActivity"
+            android:exported="true" />
+
+        <activity
             android:name=".WelcomeActivity"
             android:theme="@style/Theme.SafeTravelMonitor.Welcome"
             android:exported="true" />
