@@ -7,6 +7,8 @@ import android.content.pm.PackageManager
 import android.location.Location
 import android.os.Build
 import android.os.Bundle
+import android.view.View
+import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -19,12 +21,10 @@ import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MarkerOptions
-import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.*
 import com.knightmeya.safetravelmonitor.databinding.ActivityTravelerBinding
-import com.knightmeya.safetravelmonitor.models.Journey
-import com.knightmeya.safetravelmonitor.models.MyLatLng
-import com.knightmeya.safetravelmonitor.models.Notification
-import com.knightmeya.safetravelmonitor.models.NotificationType
+import com.knightmeya.safetravelmonitor.models.*
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -40,7 +40,13 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
     private var travelMode = "driving"
     private var journeyId: String? = null
     
+    private val auth = FirebaseAuth.getInstance()
     private val database = FirebaseDatabase.getInstance().reference
+    private val currentUser = auth.currentUser
+    
+    private val friendsList = mutableListOf<User>()
+    private lateinit var spinnerAdapter: ArrayAdapter<String>
+
     private val LOCATION_PERMISSION_REQUEST_CODE = 100
     private val NOTIFICATION_PERMISSION_REQUEST_CODE = 101
 
@@ -49,10 +55,16 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
         binding = ActivityTravelerBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        if (currentUser == null) {
+            finish()
+            return
+        }
+
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
         setupMapFragment()
         setupUI()
+        loadFriends()
         requestLocationPermission()
     }
 
@@ -74,13 +86,54 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
     private fun setupUI() {
+        spinnerAdapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, mutableListOf("Loading friends..."))
+        spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        binding.spinnerFriends.adapter = spinnerAdapter
+
         binding.btnWalking.setOnClickListener { setTravelMode("walking") }
         binding.btnDriving.setOnClickListener { setTravelMode("driving") }
         binding.btnTransit.setOnClickListener { setTravelMode("transit") }
 
-        binding.btnStartJourney.setOnClickListener { startJourney() }
+        binding.btnStartJourney.setOnClickListener { requestMonitoring() }
         binding.btnEndJourney.setOnClickListener { endJourney() }
         binding.btnEmergency.setOnClickListener { sendEmergencyAlert() }
+        
+        binding.btnCancelRequest.setOnClickListener { cancelRequest() }
+    }
+
+    private fun loadFriends() {
+        val myUid = currentUser?.uid ?: return
+        database.child("users").child(myUid).child("friends").addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                friendsList.clear()
+                val friendNames = mutableListOf<String>()
+                
+                val friendsCount = snapshot.childrenCount
+                if (friendsCount == 0L) {
+                    spinnerAdapter.clear()
+                    spinnerAdapter.add("No friends added yet")
+                    spinnerAdapter.notifyDataSetChanged()
+                    return
+                }
+
+                snapshot.children.forEach { friendSnapshot ->
+                    val friendUid = friendSnapshot.key ?: return@forEach
+                    database.child("users").child(friendUid).get().addOnSuccessListener { userSnapshot ->
+                        val user = userSnapshot.getValue(User::class.java)
+                        user?.let {
+                            friendsList.add(it)
+                            friendNames.add(it.name)
+                            if (friendsList.size.toLong() == friendsCount) {
+                                spinnerAdapter.clear()
+                                spinnerAdapter.addAll(friendNames)
+                                spinnerAdapter.notifyDataSetChanged()
+                            }
+                        }
+                    }
+                }
+            }
+            override fun onCancelled(error: DatabaseError) {}
+        })
     }
 
     private fun setTravelMode(mode: String) {
@@ -93,7 +146,7 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
 
     private fun updateETA() {
         selectedDestination?.let {
-            val distance = 5.4 // Mocked distance
+            val distance = 5.4 
             val speed = when(travelMode) {
                 "walking" -> 5
                 "driving" -> 40
@@ -105,28 +158,67 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
             
             binding.tvDistance.text = String.format(Locale.getDefault(), "%.1f km", distance)
             binding.tvDuration.text = String.format(Locale.getDefault(), "%d min", minutes)
-            binding.etaPanel.visibility = android.view.View.VISIBLE
-            binding.btnStartJourney.isEnabled = true
+            binding.etaPanel.visibility = View.VISIBLE
+            binding.btnStartJourney.isEnabled = friendsList.isNotEmpty()
         }
     }
 
-    private fun startJourney() {
-        val monitorId = binding.etMonitorId.text.toString().trim()
-        if (monitorId.isEmpty()) {
-            Toast.makeText(this, "Please enter a Monitor ID", Toast.LENGTH_SHORT).show()
+    private fun requestMonitoring() {
+        if (binding.spinnerFriends.selectedItemPosition < 0 || friendsList.isEmpty()) {
+            Toast.makeText(this, "Please select a monitor", Toast.LENGTH_SHORT).show()
             return
         }
 
+        val myUid = currentUser?.uid ?: return
+        val monitor = friendsList[binding.spinnerFriends.selectedItemPosition]
         val id = UUID.randomUUID().toString()
         journeyId = id
+
+        // Get my name
+        database.child("users").child(myUid).child("name").get().addOnSuccessListener { nameSnapshot ->
+            val myName = nameSnapshot.getValue(String::class.java) ?: "Traveler"
+            
+            val request = MonitoringRequest(
+                travelerId = myUid,
+                travelerName = myName,
+                journeyId = id,
+                status = "pending"
+            )
+
+            database.child("monitoring_requests").child(monitor.uid).child(id).setValue(request)
+                .addOnSuccessListener {
+                    binding.selectionLayout.visibility = View.GONE
+                    binding.waitingLayout.visibility = View.VISIBLE
+                    listenForApproval(monitor.uid, id)
+                }
+        }
+    }
+
+    private fun listenForApproval(monitorUid: String, id: String) {
+        database.child("monitoring_requests").child(monitorUid).child(id).addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val req = snapshot.getValue(MonitoringRequest::class.java)
+                if (req?.status == "accepted") {
+                    startJourney(monitorUid)
+                } else if (req?.status == "rejected") {
+                    binding.selectionLayout.visibility = View.VISIBLE
+                    binding.waitingLayout.visibility = View.GONE
+                    Toast.makeText(this@TravelerActivity, "Request rejected", Toast.LENGTH_SHORT).show()
+                }
+            }
+            override fun onCancelled(error: DatabaseError) {}
+        })
+    }
+
+    private fun startJourney(monitorUid: String) {
+        val id = journeyId ?: return
         isJourneyActive = true
         journeyStartTime = System.currentTimeMillis()
 
-        // Save journey ID and monitor ID for the background service
-        val prefs = getSharedPreferences("SafeTravelPrefs", Context.MODE_PRIVATE)
-        prefs.edit()
+        getSharedPreferences("SafeTravelPrefs", Context.MODE_PRIVATE)
+            .edit()
             .putString("active_journey_id", id)
-            .putString("monitor_id", monitorId)
+            .putString("monitor_id", monitorUid)
             .apply()
 
         val journey = Journey(
@@ -138,54 +230,54 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
             travelMode = travelMode
         )
 
-        // Push to Firebase under the monitor ID
-        database.child("monitor_journeys").child(monitorId).child(id).setValue(journey)
-        sendFirebaseNotification(monitorId, id, "Journey Started", "Traveler is on the way!", NotificationType.JOURNEY_STARTED)
-
-        binding.selectionLayout.visibility = android.view.View.GONE
-        binding.activeLayout.visibility = android.view.View.VISIBLE
+        database.child("monitor_journeys").child(monitorUid).child(id).setValue(journey)
+        
+        binding.waitingLayout.visibility = View.GONE
+        binding.activeLayout.visibility = View.VISIBLE
         binding.tvStartTime.text = getString(R.string.started_at, SimpleDateFormat("hh:mm a", Locale.getDefault()).format(Date(journeyStartTime)))
         
         startLocationTracking()
         startTimerUpdates()
-        Toast.makeText(this, "Journey started!", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun cancelRequest() {
+        journeyId?.let { id ->
+            val monitor = if (friendsList.isNotEmpty() && binding.spinnerFriends.selectedItemPosition >= 0) 
+                friendsList[binding.spinnerFriends.selectedItemPosition] else null
+            
+            monitor?.let { m ->
+                database.child("monitoring_requests").child(m.uid).child(id).removeValue()
+            }
+        }
+        binding.selectionLayout.visibility = View.VISIBLE
+        binding.waitingLayout.visibility = View.GONE
     }
 
     private fun endJourney() {
-        val monitorId = getSharedPreferences("SafeTravelPrefs", Context.MODE_PRIVATE).getString("monitor_id", null)
+        val mId = getSharedPreferences("SafeTravelPrefs", Context.MODE_PRIVATE).getString("monitor_id", null)
         journeyId?.let { id ->
-            if (monitorId != null) {
-                database.child("monitor_journeys").child(monitorId).child(id).child("isActive").setValue(false)
-                sendFirebaseNotification(monitorId, id, "Safe Arrival", "Traveler has reached the destination!", NotificationType.SAFE_ARRIVAL)
+            if (mId != null) {
+                database.child("monitor_journeys").child(mId).child(id).child("isActive").setValue(false)
             }
         }
-        
         isJourneyActive = false
-        binding.selectionLayout.visibility = android.view.View.VISIBLE
-        binding.activeLayout.visibility = android.view.View.GONE
+        binding.selectionLayout.visibility = View.VISIBLE
+        binding.activeLayout.visibility = View.GONE
         stopLocationTracking()
-        Toast.makeText(this, "Journey ended safely!", Toast.LENGTH_SHORT).show()
     }
 
     private fun sendEmergencyAlert() {
-        val monitorId = getSharedPreferences("SafeTravelPrefs", Context.MODE_PRIVATE).getString("monitor_id", null)
-        journeyId?.let { id ->
-            if (monitorId != null) {
-                sendFirebaseNotification(monitorId, id, "🚨 EMERGENCY", "Traveler needs help!", NotificationType.EMERGENCY_ALERT)
-                Toast.makeText(this, "EMERGENCY ALERT SENT!", Toast.LENGTH_LONG).show()
-            }
+        val mId = getSharedPreferences("SafeTravelPrefs", Context.MODE_PRIVATE).getString("monitor_id", null)
+        if (mId != null && journeyId != null) {
+            val notification = Notification(
+                id = UUID.randomUUID().toString(),
+                title = "🚨 EMERGENCY",
+                message = "Traveler needs help!",
+                timestamp = System.currentTimeMillis(),
+                type = "EMERGENCY_ALERT"
+            )
+            database.child("notifications").child(mId).child(journeyId!!).push().setValue(notification)
         }
-    }
-
-    private fun sendFirebaseNotification(monitorId: String, journeyId: String, title: String, message: String, type: NotificationType) {
-        val notification = Notification(
-            id = UUID.randomUUID().toString(),
-            title = title,
-            message = message,
-            timestamp = System.currentTimeMillis(),
-            type = type.name
-        )
-        database.child("notifications").child(monitorId).child(journeyId).push().setValue(notification)
     }
 
     private fun startLocationTracking() {
@@ -204,8 +296,8 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
                 if (isJourneyActive) {
                     val seconds = (System.currentTimeMillis() - journeyStartTime) / 1000
                     val minutes = seconds / 60
-                    val remainingSeconds = seconds % 60
-                    binding.tvElapsedTime.text = String.format(Locale.getDefault(), "Time Elapsed: %02d:%02d", minutes, remainingSeconds)
+                    val remSeconds = seconds % 60
+                    binding.tvElapsedTime.text = String.format(Locale.getDefault(), "Time Elapsed: %02d:%02d", minutes, remSeconds)
                     binding.root.postDelayed(this, 1000)
                 }
             }
@@ -242,10 +334,8 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
-            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                getCurrentLocation()
-            }
+        if (requestCode == LOCATION_PERMISSION_REQUEST_CODE && grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            getCurrentLocation()
         }
     }
 }

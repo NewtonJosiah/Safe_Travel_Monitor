@@ -3,6 +3,32 @@ package com.knightmeya.safetravelmonitor.models
 import com.google.firebase.database.IgnoreExtraProperties
 
 @IgnoreExtraProperties
+data class User(
+    val uid: String = "",
+    val numericId: String = "", // e.g. 12345678
+    val name: String = "",
+    val email: String = "",
+    val phone: String = "",
+    val profilePic: String? = null,
+    val friends: Map<String, Boolean> = emptyMap() // Map of friend UID -> true
+)
+
+@IgnoreExtraProperties
+data class FriendRequest(
+    val fromId: String = "",
+    val fromName: String = "",
+    val status: String = "pending" // pending, accepted, rejected
+)
+
+@IgnoreExtraProperties
+data class MonitoringRequest(
+    val travelerId: String = "",
+    val travelerName: String = "",
+    val journeyId: String = "",
+    val status: String = "pending" // pending, accepted, rejected
+)
+
+@IgnoreExtraProperties
 data class MyLatLng(
     val latitude: Double = 0.0,
     val longitude: Double = 0.0

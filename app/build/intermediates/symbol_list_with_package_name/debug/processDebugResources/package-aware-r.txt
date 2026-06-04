@@ -1416,6 +1416,10 @@ color bright_foreground_inverse_material_dark
 color bright_foreground_inverse_material_light
 color bright_foreground_material_dark
 color bright_foreground_material_light
+color browser_actions_bg_grey
+color browser_actions_divider_color
+color browser_actions_text_color
+color browser_actions_title_color
 color button_material_dark
 color button_material_light
 color call_notification_answer_color
@@ -2258,6 +2262,8 @@ dimen abc_text_size_subtitle_material_toolbar
 dimen abc_text_size_title_material
 dimen abc_text_size_title_material_toolbar
 dimen appcompat_dialog_background_inset
+dimen browser_actions_context_menu_max_width
+dimen browser_actions_context_menu_min_padding
 dimen cardview_compat_inset_shadow
 dimen cardview_default_elevation
 dimen cardview_default_radius
@@ -3071,6 +3077,7 @@ drawable btn_radio_on_to_off_mtrl_animation
 drawable button_primary
 drawable card_background
 drawable circle_blue
+drawable circle_globe
 drawable circle_green
 drawable common_full_open_on_phone
 drawable common_google_signin_btn_icon_dark
@@ -3116,6 +3123,9 @@ drawable ic_mtrl_checked_circle
 drawable ic_mtrl_chip_checked_black
 drawable ic_mtrl_chip_checked_circle
 drawable ic_mtrl_chip_close_circle
+drawable ic_other_sign_in
+drawable ic_passkey
+drawable ic_password
 drawable ic_search_black_24
 drawable indeterminate_static
 drawable m3_avd_hide_password
@@ -3302,9 +3312,22 @@ id bounce
 id bounceBoth
 id bounceEnd
 id bounceStart
+id browser_actions_header_text
+id browser_actions_menu_item_icon
+id browser_actions_menu_item_text
+id browser_actions_menu_items
+id browser_actions_menu_view
+id btnAccept
+id btnCancelRequest
 id btnDriving
 id btnEmergency
 id btnEndJourney
+id btnFriends
+id btnGetStarted
+id btnLogout
+id btnReject
+id btnSendRequest
+id btnSignup
 id btnStartJourney
 id btnStartMonitoring
 id btnTransit
@@ -3392,7 +3415,11 @@ id endToStart
 id enterAlways
 id enterAlwaysCollapsed
 id escape
-id etMonitorId
+id etEmail
+id etName
+id etPassword
+id etPhone
+id etSearchId
 id etTravelerId
 id etaPanel
 id exitUntilCollapsed
@@ -3418,6 +3445,7 @@ id frost
 id fullscreen_header
 id ghost_view
 id ghost_view_holder
+id globe
 id gone
 id graph
 id graph_wrap
@@ -3453,6 +3481,7 @@ id inward
 id italic
 id item_touch_helper_previous_elevation
 id ivIcon
+id ivProfile
 id jumpToEnd
 id jumpToStart
 id labeled
@@ -3497,7 +3526,6 @@ id message
 id middle
 id mini
 id monitorButton
-id monitorInputLayout
 id monitorMap
 id month_grid
 id month_navigation_bar
@@ -3597,7 +3625,9 @@ id right_icon
 id right_side
 id rounded
 id row_index_key
+id rvFriends
 id rvNotifications
+id rvRequests
 id satellite
 id save_non_transition_alpha
 id save_overlay_view
@@ -3640,6 +3670,7 @@ id snapMargins
 id south
 id spacer
 id special_effects_controller_view_tag
+id spinnerFriends
 id spline
 id split_action_bar
 id spread
@@ -3657,7 +3688,6 @@ id startVertical
 id staticLayout
 id staticPostLayout
 id statusCard
-id step1
 id stop
 id stretch
 id submenuarrow
@@ -3718,11 +3748,21 @@ id tvDistance
 id tvDuration
 id tvETA
 id tvElapsedTime
+id tvFriendName
+id tvLoginLink
 id tvMessage
+id tvMyFriendsID
+id tvName
 id tvRemainingTime
 id tvRemainingTimeLabel
+id tvRequestsHeader
 id tvStartTime
+id tvStatus
+id tvSubtitle
 id tvTimestamp
+id tvTitle
+id tvUserID
+id tvUserName
 id unchecked
 id uniform
 id unlabeled
@@ -3738,6 +3778,7 @@ id view_tree_saved_state_registry_owner
 id view_tree_view_model_store_owner
 id visible
 id visible_removing_fragment_view_tag
+id waitingLayout
 id west
 id wide
 id withText
@@ -3863,9 +3904,14 @@ layout abc_search_dropdown_item_icons_2line
 layout abc_search_view
 layout abc_select_dialog_material
 layout abc_tooltip
+layout activity_friends
 layout activity_main
 layout activity_monitor
+layout activity_signup
 layout activity_traveler
+layout activity_welcome
+layout browser_actions_context_menu_page
+layout browser_actions_context_menu_row
 layout custom_dialog
 layout design_bottom_navigation_item
 layout design_bottom_sheet_dialog
@@ -3884,6 +3930,8 @@ layout design_text_input_end_icon
 layout design_text_input_start_icon
 layout ime_base_split_test_activity
 layout ime_secondary_split_test_activity
+layout item_friend
+layout item_friend_request
 layout item_notification
 layout m3_alert_dialog
 layout m3_alert_dialog_actions
@@ -3978,6 +4026,8 @@ string abc_shareactionprovider_share_with
 string abc_shareactionprovider_share_with_application
 string abc_toolbar_collapse_description
 string active_journey
+string android_credentials_TYPE_PASSWORD_CREDENTIAL
+string androidx_credentials_TYPE_PUBLIC_KEY_CREDENTIAL
 string androidx_startup
 string app_name
 string appbar_scrolling_view_behavior
@@ -4016,6 +4066,7 @@ string common_google_play_services_wear_update_text
 string common_open_on_phone
 string common_signin_button_text
 string common_signin_button_text_long
+string copy_toast_msg
 string distance
 string driving
 string emergency
@@ -4026,11 +4077,15 @@ string eta
 string exposed_dropdown_menu_content_description
 string fab_transformation_scrim_behavior
 string fab_transformation_sheet_behavior
+string fallback_menu_item_copy_link
+string fallback_menu_item_open_in_browser
+string fallback_menu_item_share_link
 string gcm_defaultSenderId
 string google_api_key
 string google_app_id
 string google_crash_reporting_api_key
 string google_storage_bucket
+string hello_user
 string hide_bottom_view_on_scroll_behavior
 string i_am_monitoring
 string i_am_traveling
@@ -4167,6 +4222,7 @@ string transit
 string travel_mode
 string traveler_interface
 string walking
+string your_id
 style AlertDialog_AppCompat
 style AlertDialog_AppCompat_Light
 style Animation_AppCompat_Dialog
@@ -4718,6 +4774,7 @@ style Theme_Design_Light
 style Theme_Design_Light_BottomSheetDialog
 style Theme_Design_Light_NoActionBar
 style Theme_Design_NoActionBar
+style Theme_Hidden
 style Theme_Material3_Dark
 style Theme_Material3_Dark_BottomSheetDialog
 style Theme_Material3_Dark_Dialog
@@ -4795,7 +4852,9 @@ style Theme_MaterialComponents_Light_NoActionBar
 style Theme_MaterialComponents_Light_NoActionBar_Bridge
 style Theme_MaterialComponents_NoActionBar
 style Theme_MaterialComponents_NoActionBar_Bridge
+style Theme_PlayCore_Transparent
 style Theme_SafeTravelMonitor
+style Theme_SafeTravelMonitor_Welcome
 style ThemeOverlay_AppCompat
 style ThemeOverlay_AppCompat_ActionBar
 style ThemeOverlay_AppCompat_Dark
@@ -5452,3 +5511,4 @@ styleable ViewStubCompat android_id android_layout android_inflatedId
 styleable ViewTransition android_id SharedValue SharedValueId clearsTag duration ifTagNotSet ifTagSet motionInterpolator motionTarget onStateTransition pathMotionArc setsTag transitionDisable upDuration viewTransitionMode
 styleable include constraintSet
 xml ga_ad_services_config
+xml image_share_filepaths

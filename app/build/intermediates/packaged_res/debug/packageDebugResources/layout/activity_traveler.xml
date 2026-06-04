@@ -56,37 +56,10 @@
                 android:orientation="vertical"
                 android:visibility="visible">
 
-                <!-- Step Indicator (Simplified) -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:layout_marginBottom="16dp">
-                    <TextView
-                        android:id="@+id/step1"
-                        android:layout_width="28dp"
-                        android:layout_height="28dp"
-                        android:background="@drawable/circle_blue"
-                        android:gravity="center"
-                        android:text="1"
-                        android:textColor="@android:color/white"
-                        android:textSize="12sp"
-                        android:textStyle="bold" />
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="8dp"
-                        android:text="Select destination"
-                        android:textColor="#2563EB"
-                        android:textSize="14sp"
-                        android:textStyle="bold" />
-                </LinearLayout>
-
                 <!-- Map Card -->
                 <androidx.cardview.widget.CardView
                     android:layout_width="match_parent"
-                    android:layout_height="300dp"
+                    android:layout_height="240dp"
                     app:cardCornerRadius="16dp"
                     app:cardElevation="4dp"
                     android:layout_marginBottom="16dp">
@@ -96,6 +69,24 @@
                         android:layout_width="match_parent"
                         android:layout_height="match_parent" />
                 </androidx.cardview.widget.CardView>
+
+                <!-- Monitor Selection -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="CHOOSE YOUR MONITOR"
+                    android:textSize="12sp"
+                    android:textColor="@color/muted_foreground"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="8dp" />
+
+                <Spinner
+                    android:id="@+id/spinnerFriends"
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:background="@drawable/card_background"
+                    android:layout_marginBottom="16dp"
+                    android:paddingHorizontal="12dp" />
 
                 <!-- Travel Mode -->
                 <TextView
@@ -197,35 +188,6 @@
                     </LinearLayout>
                 </LinearLayout>
 
-                <!-- Monitor Selection -->
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="MONITOR'S PHONE / ID"
-                    android:textSize="12sp"
-                    android:textColor="@color/muted_foreground"
-                    android:textStyle="bold"
-                    android:layout_marginBottom="8dp" />
-
-                <com.google.android.material.textfield.TextInputLayout
-                    android:id="@+id/monitorInputLayout"
-                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="16dp"
-                    app:boxCornerRadiusBottomEnd="12dp"
-                    app:boxCornerRadiusBottomStart="12dp"
-                    app:boxCornerRadiusTopEnd="12dp"
-                    app:boxCornerRadiusTopStart="12dp">
-
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/etMonitorId"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:hint="Enter Monitor ID or Phone"
-                        android:inputType="phone" />
-                </com.google.android.material.textfield.TextInputLayout>
-
                 <!-- Start Button -->
                 <Button
                     android:id="@+id/btnStartJourney"
@@ -237,6 +199,35 @@
                     android:enabled="false"
                     app:cornerRadius="16dp" />
 
+            </LinearLayout>
+
+            <!-- Waiting for Approval UI -->
+            <LinearLayout
+                android:id="@+id/waitingLayout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:padding="32dp"
+                android:visibility="gone">
+                <ProgressBar
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:text="Waiting for monitor to approve..."
+                    android:textColor="#1E3A8A"
+                    android:textStyle="bold" />
+                <Button
+                    android:id="@+id/btnCancelRequest"
+                    style="@style/Widget.Material3.Button.TextButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Cancel Request"
+                    android:textColor="@color/destructive"
+                    android:layout_marginTop="8dp" />
             </LinearLayout>
 
             <!-- Active Journey State UI -->

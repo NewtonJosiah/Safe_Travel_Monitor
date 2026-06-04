@@ -45,6 +45,19 @@
             android:name=".MonitorActivity"
             android:exported="true" />
 
+        <activity
+            android:name=".SignupActivity"
+            android:exported="true" />
+
+        <activity
+            android:name=".WelcomeActivity"
+            android:theme="@style/Theme.SafeTravelMonitor.Welcome"
+            android:exported="true" />
+
+        <activity
+            android:name=".FriendsActivity"
+            android:exported="true" />
+
         <!-- Services -->
         <service
             android:name=".LocationTrackingService"

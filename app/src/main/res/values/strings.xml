@@ -26,4 +26,6 @@
     <string name="i_am_traveling">I AM TRAVELING</string>
     <string name="i_am_monitoring">I AM MONITORING</string>
     <string name="safety_priority">Your safety is our priority</string>
+    <string name="hello_user">Hello, %1$s!</string>
+    <string name="your_id">Your ID: %1$s</string>
 </resources>

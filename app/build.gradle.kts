@@ -10,7 +10,7 @@ android {
 
     defaultConfig {
         applicationId = "com.knightmeya.safetravelmonitor"
-        minSdk = 21
+        minSdk = 23
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
@@ -55,6 +55,7 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.analytics)
     implementation(libs.firebase.database)
+    implementation(libs.firebase.auth)
 
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")

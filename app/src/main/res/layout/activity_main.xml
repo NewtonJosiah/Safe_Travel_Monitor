@@ -15,6 +15,24 @@
         app:layout_constraintTop_toTopOf="parent">
 
         <TextView
+            android:id="@+id/tvUserName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Welcome!"
+            android:textColor="@android:color/white"
+            android:textSize="24sp"
+            android:layout_marginBottom="4dp" />
+
+        <TextView
+            android:id="@+id/tvUserID"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Your ID: ..."
+            android:textColor="#E2E8F0"
+            android:textSize="14sp"
+            android:layout_marginBottom="32dp" />
+
+        <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Safe Travel Monitor"
@@ -56,6 +74,24 @@
             app:icon="@android:drawable/ic_menu_view"
             android:textColor="@android:color/white"
             app:strokeColor="@android:color/white" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnFriends"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Friends and Family"
+            android:textColor="#94A3B8"
+            android:layout_marginTop="24dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnLogout"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Logout"
+            android:textColor="@color/destructive"
+            android:layout_marginTop="8dp" />
 
     </LinearLayout>
 
