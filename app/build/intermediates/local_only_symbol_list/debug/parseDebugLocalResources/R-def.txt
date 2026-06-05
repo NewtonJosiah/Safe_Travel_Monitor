@@ -25,10 +25,15 @@ drawable card_background
 drawable circle_blue
 drawable circle_globe
 drawable circle_green
+drawable earth_globe
 drawable eta_panel_background
+drawable ic_launcher_background
+drawable ic_launcher_foreground
+drawable ic_plane
 drawable main_background_gradient
 drawable monitor_header_gradient
 drawable overdue_background
+drawable tarmac_ring
 drawable traveler_header_gradient
 id activeJourneyInfo
 id activeLayout
@@ -58,11 +63,13 @@ id etSearchId
 id etTravelerId
 id etaPanel
 id globe
+id globeContainer
 id headerBackground
 id headerSubtitle
 id headerTitle
 id idInputCard
 id ivIcon
+id ivPlane
 id ivProfile
 id map
 id monitorButton
@@ -74,6 +81,7 @@ id rvRequests
 id selectionLayout
 id spinnerFriends
 id statusCard
+id tarmac
 id travellerButton
 id tvDistance
 id tvDuration

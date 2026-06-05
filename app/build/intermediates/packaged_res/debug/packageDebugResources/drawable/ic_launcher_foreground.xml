@@ -16,7 +16,8 @@
         android:strokeWidth="2"
         android:strokeColor="#475569"
         android:strokeLineCap="round"
-        android:pathData="M54,54m-35,0a35,35 0,1 1,70 0a35,35 0,1 1,-70 0" />
+        android:pathData="M54,54m-35,0a35,35 0,1 1,70 0a35,35 0,1 1,-70 0"
+        android:strokeDashArray="4 2" />
     <!-- Plane -->
     <path
         android:fillColor="#1E3A8A"
