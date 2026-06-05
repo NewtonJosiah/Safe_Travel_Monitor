@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="accent">#E9EBEF</color>
+    <color name="active_journey_bg">#F0FDF4</color>
+    <color name="active_journey_border">#22C55E</color>
+    <color name="background">#FFFFFF</color>
+    <color name="border">#1A000000</color>
+    <color name="destructive">#D4183D</color>
+    <color name="destructive_foreground">#FFFFFF</color>
+    <color name="foreground">#030213</color>
+    <color name="monitor_header_end">#DB2777</color>
+    <color name="monitor_header_start">#9333EA</color>
+    <color name="muted">#ECECF0</color>
+    <color name="muted_foreground">#717182</color>
+    <color name="overdue_bg">#FEF2F2</color>
+    <color name="overdue_border">#EF4444</color>
+    <color name="primary">#030213</color>
+    <color name="primary_foreground">#FFFFFF</color>
+    <color name="secondary">#ECECF0</color>
+    <color name="secondary_foreground">#030213</color>
+    <color name="traveler_header_end">#4F46E5</color>
+    <color name="traveler_header_start">#2563EB</color>
+    <string name="active_journey">Active Journey</string>
+    <string name="app_name">Safe Travel Monitor</string>
+    <string name="distance">DISTANCE</string>
+    <string name="driving">Driving</string>
+    <string name="emergency">EMERGENCY</string>
+    <string name="end_journey_safely">End Journey Safely</string>
+    <string name="eta">ETA: %1$s</string>
+    <string name="firebase_database_url" translatable="false">https://safe-travel-monitor-default-rtdb.firebaseio.com</string>
+    <string name="gcm_defaultSenderId" translatable="false">897530494352</string>
+    <string name="google_api_key" translatable="false">AIzaSyByfYiRjV7Ok84LpnxkRR-xmirnUtzYIVc</string>
+    <string name="google_app_id" translatable="false">1:897530494352:android:51ffaa10be957b426d8715</string>
+    <string name="google_crash_reporting_api_key" translatable="false">AIzaSyByfYiRjV7Ok84LpnxkRR-xmirnUtzYIVc</string>
+    <string name="google_storage_bucket" translatable="false">safe-travel-monitor.firebasestorage.app</string>
+    <string name="hello_user">Hello, %1$s!</string>
+    <string name="i_am_monitoring">I AM MONITORING</string>
+    <string name="i_am_traveling">I AM TRAVELING</string>
+    <string name="journey_in_progress">Journey in Progress</string>
+    <string name="journey_status">Journey Status</string>
+    <string name="live_location">Live Location</string>
+    <string name="monitor_interface">Monitor Interface</string>
+    <string name="notifications">Notifications</string>
+    <string name="overdue_warning">⚠️ Traveler has not arrived!</string>
+    <string name="project_id" translatable="false">safe-travel-monitor</string>
+    <string name="safe_travel">Safe Travel</string>
+    <string name="safety_priority">Your safety is our priority</string>
+    <string name="select_destination">Select destination</string>
+    <string name="start_journey">Start Journey</string>
+    <string name="started_at">Started: %1$s</string>
+    <string name="time">TIME</string>
+    <string name="time_elapsed">Time Elapsed: %1$s</string>
+    <string name="time_remaining">Time Remaining</string>
+    <string name="transit">Transit</string>
+    <string name="travel_mode">TRAVEL MODE</string>
+    <string name="traveler_interface">Traveler Interface</string>
+    <string name="walking">Walking</string>
+    <string name="your_id">Your ID: %1$s</string>
+    <style name="Theme.SafeTravelMonitor" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/primary</item>
+        <item name="colorOnPrimary">@color/primary_foreground</item>
+        <item name="colorSecondary">@color/secondary</item>
+        <item name="colorOnSecondary">@color/secondary_foreground</item>
+        <item name="android:windowBackground">@color/background</item>
+        <item name="colorError">@color/destructive</item>
+        <item name="colorOnError">@color/destructive_foreground</item>
+
+        <item name="android:statusBarColor">?attr/colorPrimary</item>
+    </style>
+    <style name="Theme.SafeTravelMonitor.Welcome" parent="Theme.SafeTravelMonitor">
+        <item name="android:windowBackground">@android:color/black</item>
+        <item name="android:statusBarColor">@android:color/black</item>
+    </style>
+</resources>

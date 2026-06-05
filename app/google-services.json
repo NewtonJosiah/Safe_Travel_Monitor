@@ -13,7 +13,20 @@
           "package_name": "com.knightmeya.safetravelmonitor"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "897530494352-follsofujdkmfpm98qkfe2k9hq0um00j.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.knightmeya.safetravelmonitor",
+            "certificate_hash": "ba6fb02103a6debbf7ed3c5b83f18ea6d3bbe1e2"
+          }
+        },
+        {
+          "client_id": "897530494352-jqi2aro46jemgac0orq4r52im8qbd608.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyByfYiRjV7Ok84LpnxkRR-xmirnUtzYIVc"
@@ -21,7 +34,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "897530494352-jqi2aro46jemgac0orq4r52im8qbd608.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }
