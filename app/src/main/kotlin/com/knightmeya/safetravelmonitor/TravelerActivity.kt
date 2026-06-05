@@ -1,8 +1,10 @@
 package com.knightmeya.safetravelmonitor
 
 import android.Manifest
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.location.Location
 import android.os.Build
@@ -33,6 +35,8 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
     private lateinit var binding: ActivityTravelerBinding
     private lateinit var mMap: GoogleMap
     private lateinit var fusedLocationClient: FusedLocationProviderClient
+    private var travelerMarker: com.google.android.gms.maps.model.Marker? = null
+    private var destinationMarker: com.google.android.gms.maps.model.Marker? = null
     private var isJourneyActive = false
     private var journeyStartTime = 0L
     private var estimatedArrivalTime = 0L
@@ -42,7 +46,10 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
     
     private val auth = FirebaseAuth.getInstance()
     private val database = FirebaseDatabase.getInstance().reference
-    private val currentUser = auth.currentUser
+    
+    // Production Mode: Use actual current UID
+    private val currentUid: String
+        get() = auth.currentUser?.uid ?: throw IllegalStateException("User must be logged in")
     
     private val friendsList = mutableListOf<User>()
     private lateinit var spinnerAdapter: ArrayAdapter<String>
@@ -50,15 +57,20 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
     private val LOCATION_PERMISSION_REQUEST_CODE = 100
     private val NOTIFICATION_PERMISSION_REQUEST_CODE = 101
 
+    private val locationReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            val lat = intent?.getDoubleExtra("latitude", 0.0) ?: 0.0
+            val lng = intent?.getDoubleExtra("longitude", 0.0) ?: 0.0
+            if (lat != 0.0 && lng != 0.0) {
+                updateTravelerLocationOnMap(LatLng(lat, lng))
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityTravelerBinding.inflate(layoutInflater)
         setContentView(binding.root)
-
-        if (currentUser == null) {
-            finish()
-            return
-        }
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
@@ -66,6 +78,21 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
         setupUI()
         loadFriends()
         requestLocationPermission()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(locationReceiver, IntentFilter("LOCATION_UPDATE"), RECEIVER_EXPORTED)
+        } else {
+            @Suppress("UnspecifiedRegisterReceiverFlag")
+            registerReceiver(locationReceiver, IntentFilter("LOCATION_UPDATE"))
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        unregisterReceiver(locationReceiver)
     }
 
     private fun setupMapFragment() {
@@ -86,7 +113,7 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
     private fun setupUI() {
-        spinnerAdapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, mutableListOf("Loading friends..."))
+        spinnerAdapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, mutableListOf("Loading monitors..."))
         spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         binding.spinnerFriends.adapter = spinnerAdapter
 
@@ -102,8 +129,9 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
     private fun loadFriends() {
-        val myUid = currentUser?.uid ?: return
-        database.child("users").child(myUid).child("friends").addValueEventListener(object : ValueEventListener {
+        val uid = auth.currentUser?.uid ?: return
+
+        database.child("users").child(uid).child("friends").addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 friendsList.clear()
                 val friendNames = mutableListOf<String>()
@@ -169,17 +197,15 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
             return
         }
 
-        val myUid = currentUser?.uid ?: return
         val monitor = friendsList[binding.spinnerFriends.selectedItemPosition]
         val id = UUID.randomUUID().toString()
         journeyId = id
 
-        // Get my name
-        database.child("users").child(myUid).child("name").get().addOnSuccessListener { nameSnapshot ->
-            val myName = nameSnapshot.getValue(String::class.java) ?: "Traveler"
+        database.child("users").child(currentUid).child("name").get().addOnSuccessListener { nameSnapshot ->
+            val myName = nameSnapshot.getValue(String::class.java) ?: "Testing Traveler"
             
             val request = MonitoringRequest(
-                travelerId = myUid,
+                travelerId = currentUid,
                 travelerName = myName,
                 journeyId = id,
                 status = "pending"
@@ -219,6 +245,7 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
             .edit()
             .putString("active_journey_id", id)
             .putString("monitor_id", monitorUid)
+            .putString("traveler_uid", currentUid)
             .apply()
 
         val journey = Journey(
@@ -315,9 +342,26 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
         }
     }
 
+    private fun updateTravelerLocationOnMap(latLng: LatLng) {
+        if (!::mMap.isInitialized) return
+        
+        if (travelerMarker == null) {
+            travelerMarker = mMap.addMarker(MarkerOptions()
+                .position(latLng)
+                .title("You")
+                .icon(com.google.android.gms.maps.model.BitmapDescriptorFactory.defaultMarker(com.google.android.gms.maps.model.BitmapDescriptorFactory.HUE_AZURE)))
+        } else {
+            travelerMarker?.position = latLng
+        }
+
+        if (isJourneyActive) {
+            mMap.animateCamera(CameraUpdateFactory.newLatLng(latLng))
+        }
+    }
+
     private fun updateDestinationMarker(latLng: LatLng) {
-        mMap.clear()
-        mMap.addMarker(MarkerOptions().position(latLng).title("Destination"))
+        destinationMarker?.remove()
+        destinationMarker = mMap.addMarker(MarkerOptions().position(latLng).title("Destination"))
     }
 
     private fun requestLocationPermission() {

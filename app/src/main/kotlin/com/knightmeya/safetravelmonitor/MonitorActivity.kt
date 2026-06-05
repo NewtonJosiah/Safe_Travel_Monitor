@@ -32,18 +32,16 @@ class MonitorActivity : AppCompatActivity(), OnMapReadyCallback {
     
     private val auth = FirebaseAuth.getInstance()
     private val database = FirebaseDatabase.getInstance().reference
-    private val currentUser = auth.currentUser
+    
+    private val currentUid: String
+        get() = auth.currentUser?.uid ?: throw IllegalStateException("User must be logged in")
+        
     private val handler = Handler(Looper.getMainLooper())
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMonitorBinding.inflate(layoutInflater)
         setContentView(binding.root)
-
-        if (currentUser == null) {
-            finish()
-            return
-        }
 
         setupMapFragment()
         setupUI()
@@ -68,8 +66,7 @@ class MonitorActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
     private fun listenForMonitoringRequests() {
-        val myUid = currentUser?.uid ?: return
-        database.child("monitoring_requests").child(myUid).addChildEventListener(object : ChildEventListener {
+        database.child("monitoring_requests").child(currentUid).addChildEventListener(object : ChildEventListener {
             override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
                 val request = snapshot.getValue(MonitoringRequest::class.java) ?: return
                 if (request.status == "pending") {
@@ -94,27 +91,23 @@ class MonitorActivity : AppCompatActivity(), OnMapReadyCallback {
             .setMessage("${request.travelerName} wants you to monitor their journey. Accept?")
             .setCancelable(false)
             .setPositiveButton("Accept") { _, _ ->
-                val myUid = currentUser?.uid ?: return@setPositiveButton
-                database.child("monitoring_requests").child(myUid).child(request.journeyId).child("status").setValue("accepted")
+                database.child("monitoring_requests").child(currentUid).child(request.journeyId).child("status").setValue("accepted")
                 listenForJourney(request.journeyId)
             }
             .setNegativeButton("Reject") { _, _ ->
-                val myUid = currentUser?.uid ?: return@setNegativeButton
-                database.child("monitoring_requests").child(myUid).child(request.journeyId).child("status").setValue("rejected")
+                database.child("monitoring_requests").child(currentUid).child(request.journeyId).child("status").setValue("rejected")
             }
             .show()
     }
 
     private fun listenForJourney(journeyId: String) {
         binding.statusCard.visibility = View.VISIBLE
-        val myUid = currentUser?.uid ?: return
-        
-        database.child("monitor_journeys").child(myUid).child(journeyId).addValueEventListener(object : ValueEventListener {
+        database.child("monitor_journeys").child(currentUid).child(journeyId).addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 val journey = snapshot.getValue(Journey::class.java)
                 journey?.let { 
                     if (it.isActive) {
-                        startMonitoring(myUid, it)
+                        startMonitoring(currentUid, it)
                     } else {
                         stopMonitoring()
                     }
@@ -196,7 +189,16 @@ class MonitorActivity : AppCompatActivity(), OnMapReadyCallback {
 
     fun onTravelerLocationUpdate(location: LatLng) {
         locationPath.add(location)
-        mMap.addMarker(MarkerOptions().position(location).title("Current Location"))
+        mMap.clear()
+        // Re-add destination marker if we have a journey
+        // Note: For simplicity, we just clear and redraw everything to avoid multiple traveler markers
+        // In a production app, we'd manage marker instances.
+        
+        mMap.addMarker(MarkerOptions()
+            .position(location)
+            .title("Traveler Location")
+            .icon(com.google.android.gms.maps.model.BitmapDescriptorFactory.defaultMarker(com.google.android.gms.maps.model.BitmapDescriptorFactory.HUE_AZURE)))
+
         if (locationPath.size > 1) {
             mMap.addPolyline(PolylineOptions()
                 .addAll(locationPath)
@@ -204,6 +206,6 @@ class MonitorActivity : AppCompatActivity(), OnMapReadyCallback {
                 .color(getColor(R.color.traveler_header_start))
                 .geodesic(true))
         }
-        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(location, 15f))
+        mMap.animateCamera(CameraUpdateFactory.newLatLng(location))
     }
 }

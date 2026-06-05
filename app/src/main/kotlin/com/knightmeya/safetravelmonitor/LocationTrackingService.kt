@@ -22,6 +22,7 @@ class LocationTrackingService : Service() {
     private lateinit var locationCallback: LocationCallback
     private var journeyId: String? = null
     private var monitorId: String? = null
+    private var travelerUid: String? = null
     private val database = FirebaseDatabase.getInstance().reference
     
     private val NOTIFICATION_ID = 1
@@ -35,6 +36,7 @@ class LocationTrackingService : Service() {
         val prefs = getSharedPreferences("SafeTravelPrefs", Context.MODE_PRIVATE)
         journeyId = prefs.getString("active_journey_id", null)
         monitorId = prefs.getString("monitor_id", null)
+        travelerUid = prefs.getString("traveler_uid", null)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {

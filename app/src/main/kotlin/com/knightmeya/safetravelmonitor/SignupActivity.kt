@@ -61,13 +61,20 @@ class SignupActivity : AppCompatActivity() {
                             database.child("id_to_uid").child(numericId).setValue(uid)
                             
                             firebaseUser.sendEmailVerification().addOnCompleteListener {
-                                Toast.makeText(this, "Account created! Please verify your email sent to $email", Toast.LENGTH_LONG).show()
-                                startActivity(Intent(this, LoginActivity::class.java))
+                                Toast.makeText(this, "Account created! Please verify your email.", Toast.LENGTH_LONG).show()
+                                startActivity(Intent(this, EmailVerificationActivity::class.java))
                                 finish()
                             }
                         }
                 } else {
-                    Toast.makeText(this, "Signup failed: ${task.exception?.message}", Toast.LENGTH_SHORT).show()
+                    val exception = task.exception
+                    val errorMessage = exception?.message ?: "Unknown error"
+                    val errorCode = (exception as? com.google.firebase.auth.FirebaseAuthException)?.errorCode ?: "No Code"
+                    
+                    // Log the full stack trace for debugging
+                    android.util.Log.e("SignupError", "Full exception:", exception)
+
+                    Toast.makeText(this, "Signup failed ($errorCode): $errorMessage", Toast.LENGTH_LONG).show()
                 }
             }
     }

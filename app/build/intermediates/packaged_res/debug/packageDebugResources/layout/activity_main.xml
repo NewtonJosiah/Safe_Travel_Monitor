@@ -71,7 +71,6 @@
             android:textSize="18sp"
             android:textStyle="bold"
             app:cornerRadius="16dp"
-            app:icon="@android:drawable/ic_menu_view"
             android:textColor="@android:color/white"
             app:strokeColor="@android:color/white" />
 

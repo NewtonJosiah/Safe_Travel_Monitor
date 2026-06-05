@@ -27,6 +27,7 @@
     <string name="emergency">EMERGENCY</string>
     <string name="end_journey_safely">End Journey Safely</string>
     <string name="eta">ETA: %1$s</string>
+    <string name="firebase_database_url" translatable="false">https://safe-travel-monitor-default-rtdb.firebaseio.com</string>
     <string name="gcm_defaultSenderId" translatable="false">897530494352</string>
     <string name="google_api_key" translatable="false">AIzaSyByfYiRjV7Ok84LpnxkRR-xmirnUtzYIVc</string>
     <string name="google_app_id" translatable="false">1:897530494352:android:51ffaa10be957b426d8715</string>

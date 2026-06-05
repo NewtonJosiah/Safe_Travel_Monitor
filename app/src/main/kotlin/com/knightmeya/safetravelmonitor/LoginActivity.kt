@@ -48,12 +48,13 @@ class LoginActivity : AppCompatActivity() {
                         startActivity(Intent(this, MainActivity::class.java))
                         finish()
                     } else {
-                        user?.sendEmailVerification()
-                        Toast.makeText(this, "Please verify your email. A verification link has been sent.", Toast.LENGTH_LONG).show()
-                        auth.signOut()
+                        startActivity(Intent(this, EmailVerificationActivity::class.java))
+                        finish()
                     }
                 } else {
-                    Toast.makeText(this, "Login failed: ${task.exception?.message}", Toast.LENGTH_SHORT).show()
+                    val errorMessage = task.exception?.message ?: "Unknown error"
+                    val errorCode = (task.exception as? com.google.firebase.auth.FirebaseAuthException)?.errorCode ?: "No Code"
+                    Toast.makeText(this, "Login failed ($errorCode): $errorMessage", Toast.LENGTH_LONG).show()
                 }
             }
     }

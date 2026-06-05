@@ -43,6 +43,7 @@ class MainActivity : AppCompatActivity() {
             setContentView(binding.root)
             setupUI()
             checkAllPermissions()
+            
             loadUserInfo(currentUser.uid)
             listenForMonitoringRequests()
         } catch (e: Exception) {

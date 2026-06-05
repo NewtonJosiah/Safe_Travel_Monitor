@@ -1,6 +1,7 @@
 {
   "project_info": {
     "project_number": "897530494352",
+    "firebase_url": "https://safe-travel-monitor-default-rtdb.firebaseio.com",
     "project_id": "safe-travel-monitor",
     "storage_bucket": "safe-travel-monitor.firebasestorage.app"
   },

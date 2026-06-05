@@ -3318,12 +3318,14 @@ id browser_actions_menu_item_text
 id browser_actions_menu_items
 id browser_actions_menu_view
 id btnAccept
+id btnBackToLogin
 id btnCancelRequest
 id btnDriving
 id btnEmergency
 id btnEndJourney
 id btnFriends
 id btnGetStarted
+id btnLogin
 id btnLogout
 id btnReject
 id btnSendRequest
@@ -3331,6 +3333,7 @@ id btnSignup
 id btnStartJourney
 id btnStartMonitoring
 id btnTransit
+id btnVerifiedDone
 id btnWalking
 id buttonPanel
 id cache_measures
@@ -3748,14 +3751,18 @@ id tvDistance
 id tvDuration
 id tvETA
 id tvElapsedTime
+id tvForgotPassword
 id tvFriendName
 id tvLoginLink
+id tvMapHint
 id tvMessage
 id tvMyFriendsID
 id tvName
 id tvRemainingTime
 id tvRemainingTimeLabel
 id tvRequestsHeader
+id tvResendEmail
+id tvSignupLink
 id tvStartTime
 id tvStatus
 id tvSubtitle
@@ -3763,6 +3770,7 @@ id tvTimestamp
 id tvTitle
 id tvUserID
 id tvUserName
+id tvVerificationMsg
 id unchecked
 id uniform
 id unlabeled
@@ -3904,7 +3912,9 @@ layout abc_search_dropdown_item_icons_2line
 layout abc_search_view
 layout abc_select_dialog_material
 layout abc_tooltip
+layout activity_email_verification
 layout activity_friends
+layout activity_login
 layout activity_main
 layout activity_monitor
 layout activity_signup
@@ -4080,6 +4090,7 @@ string fab_transformation_sheet_behavior
 string fallback_menu_item_copy_link
 string fallback_menu_item_open_in_browser
 string fallback_menu_item_share_link
+string firebase_database_url
 string gcm_defaultSenderId
 string google_api_key
 string google_app_id

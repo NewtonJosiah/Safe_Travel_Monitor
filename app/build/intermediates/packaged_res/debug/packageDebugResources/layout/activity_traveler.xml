@@ -63,11 +63,29 @@
                     app:cardCornerRadius="16dp"
                     app:cardElevation="4dp"
                     android:layout_marginBottom="16dp">
-                    <fragment
-                        android:id="@+id/map"
-                        android:name="com.google.android.gms.maps.SupportMapFragment"
+                    <FrameLayout
                         android:layout_width="match_parent"
-                        android:layout_height="match_parent" />
+                        android:layout_height="240dp">
+                        <fragment
+                            android:id="@+id/map"
+                            android:name="com.google.android.gms.maps.SupportMapFragment"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent" />
+
+                        <TextView
+                            android:id="@+id/tvMapHint"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="bottom|center_horizontal"
+                            android:layout_marginBottom="8dp"
+                            android:background="#80000000"
+                            android:paddingHorizontal="12dp"
+                            android:paddingVertical="4dp"
+                            android:text="Tap map to set destination"
+                            android:textColor="@android:color/white"
+                            android:textSize="12sp"
+                            android:elevation="5dp" />
+                    </FrameLayout>
                 </androidx.cardview.widget.CardView>
 
                 <!-- Monitor Selection -->
