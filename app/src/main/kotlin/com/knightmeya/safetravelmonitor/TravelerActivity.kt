@@ -102,6 +102,8 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
 
     override fun onMapReady(googleMap: GoogleMap) {
         mMap = googleMap
+        
+        // ADDED: Re-enable map click to set destination
         mMap.setOnMapClickListener { latLng ->
             if (!isJourneyActive) {
                 selectedDestination = latLng
@@ -109,6 +111,7 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
                 updateETA()
             }
         }
+
         getCurrentLocation()
     }
 

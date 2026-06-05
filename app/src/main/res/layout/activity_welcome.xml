@@ -5,17 +5,42 @@
     android:layout_height="match_parent"
     android:background="#000000">
 
-    <!-- Planet/Globe (Simplified) -->
-    <View
-        android:id="@+id/globe"
-        android:layout_width="240dp"
-        android:layout_height="240dp"
-        android:background="@drawable/circle_globe"
+    <FrameLayout
+        android:id="@+id/globeContainer"
+        android:layout_width="280dp"
+        android:layout_height="280dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.4" />
+        app:layout_constraintVertical_bias="0.35">
+
+        <!-- Planet/Globe -->
+        <View
+            android:id="@+id/globe"
+            android:layout_width="220dp"
+            android:layout_height="220dp"
+            android:layout_gravity="center"
+            android:background="@drawable/earth_globe" />
+
+        <!-- Tarmac Ring -->
+        <View
+            android:id="@+id/tarmac"
+            android:layout_width="260dp"
+            android:layout_height="260dp"
+            android:layout_gravity="center"
+            android:background="@drawable/tarmac_ring" />
+
+        <!-- Plane -->
+        <ImageView
+            android:id="@+id/ivPlane"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_gravity="center"
+            android:src="@drawable/ic_plane"
+            android:translationX="130dp"
+            android:visibility="invisible" />
+    </FrameLayout>
 
     <TextView
         android:id="@+id/tvTitle"
@@ -28,7 +53,7 @@
         android:textStyle="bold"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/globe" />
+        app:layout_constraintTop_toBottomOf="@id/globeContainer" />
 
     <TextView
         android:id="@+id/tvSubtitle"

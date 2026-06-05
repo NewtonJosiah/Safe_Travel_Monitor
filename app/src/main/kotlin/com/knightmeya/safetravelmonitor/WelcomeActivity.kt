@@ -1,6 +1,7 @@
 package com.knightmeya.safetravelmonitor
 
 import android.animation.ObjectAnimator
+import android.animation.ValueAnimator
 import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
@@ -36,15 +37,46 @@ class WelcomeActivity : AppCompatActivity() {
     }
 
     private fun startAnimations() {
-        addStars()
+        // Star animation removed to prevent emulator crashes
 
-        val rotateAnimator = ObjectAnimator.ofFloat(binding.globe, "rotation", 0f, 360f).apply {
-            duration = 10000
+        // Rotate the globe slowly
+        ObjectAnimator.ofFloat(binding.globe, "rotation", 0f, 360f).apply {
+            duration = 20000
             repeatCount = ObjectAnimator.INFINITE
             interpolator = LinearInterpolator()
+            start()
         }
-        rotateAnimator.start()
 
+        // Plane Flight Animation
+        binding.ivPlane.visibility = View.VISIBLE
+        val radius = 130f * resources.displayMetrics.density
+        
+        val animator = ValueAnimator.ofFloat(0f, 360f)
+        animator.duration = 4000
+        animator.interpolator = LinearInterpolator()
+        
+        animator.addUpdateListener { anim ->
+            val angle = anim.animatedValue as Float
+            val angleRad = Math.toRadians(angle.toDouble())
+            
+            val x = (radius * Math.cos(angleRad)).toFloat()
+            val y = (radius * Math.sin(angleRad)).toFloat()
+            
+            binding.ivPlane.translationX = x
+            binding.ivPlane.translationY = y
+            binding.ivPlane.rotation = angle + 90f // Keep plane pointed forward
+        }
+        
+        animator.addListener(object : android.animation.AnimatorListenerAdapter() {
+            override fun onAnimationEnd(animation: android.animation.Animator) {
+                startTypeWriter()
+            }
+        })
+        
+        animator.start()
+    }
+
+    private fun startTypeWriter() {
         binding.tvTitle.text = ""
         val handler = Handler(Looper.getMainLooper())
         val typeWriterRunnable = object : Runnable {
@@ -56,31 +88,6 @@ class WelcomeActivity : AppCompatActivity() {
                 }
             }
         }
-        handler.postDelayed(typeWriterRunnable, 1000)
-    }
-
-    private fun addStars() {
-        val root = binding.root
-        val random = Random.Default
-        for (i in 0..50) {
-            val star = View(this).apply {
-                layoutParams = ViewGroup.LayoutParams(4, 4)
-                setBackgroundColor(Color.WHITE)
-                alpha = random.nextFloat() * 0.7f + 0.3f
-            }
-            root.addView(star)
-            
-            val randomX = random.nextInt(resources.displayMetrics.widthPixels).toFloat()
-            val randomY = random.nextInt(resources.displayMetrics.heightPixels).toFloat()
-            
-            star.x = randomX
-            star.y = randomY
-            
-            ObjectAnimator.ofFloat(star, "alpha", star.alpha, 0.1f, star.alpha).apply {
-                duration = (random.nextInt(2000) + 1000).toLong()
-                repeatCount = ObjectAnimator.INFINITE
-                start()
-            }
-        }
+        handler.postDelayed(typeWriterRunnable, 500)
     }
 }
