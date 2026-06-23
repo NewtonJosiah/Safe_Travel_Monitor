@@ -199,11 +199,33 @@
                 android:layout_height="400dp"
                 app:cardCornerRadius="16dp"
                 android:layout_marginBottom="24dp">
-                <fragment
-                    android:id="@+id/monitorMap"
-                    android:name="com.google.android.gms.maps.SupportMapFragment"
+                <FrameLayout
                     android:layout_width="match_parent"
-                    android:layout_height="match_parent" />
+                    android:layout_height="match_parent">
+                    <com.knightmeya.safetravelmonitor.CustomMapView
+                        android:id="@+id/monitorMap"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="#1E293B" />
+
+                    <!-- Telemetry Overlay -->
+                    <include
+                        layout="@layout/layout_telemetry_dashboard"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="top" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnFollow"
+                        style="@style/Widget.Material3.Button.TonalButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="bottom|end"
+                        android:layout_margin="16dp"
+                        android:text="Follow"
+                        android:textSize="12sp"
+                        app:icon="@android:drawable/ic_menu_mylocation" />
+                </FrameLayout>
             </androidx.cardview.widget.CardView>
 
             <!-- Notifications Section -->

@@ -65,12 +65,30 @@
                     android:layout_marginBottom="16dp">
                     <FrameLayout
                         android:layout_width="match_parent"
-                        android:layout_height="240dp">
-                        <fragment
-                            android:id="@+id/map"
-                            android:name="com.google.android.gms.maps.SupportMapFragment"
+                        android:layout_height="320dp">
+                        <com.knightmeya.safetravelmonitor.CustomMapView
+                            android:id="@+id/customMap"
                             android:layout_width="match_parent"
-                            android:layout_height="match_parent" />
+                            android:layout_height="match_parent"
+                            android:background="#1E293B" />
+
+                        <!-- Telemetry Overlay -->
+                        <include
+                            layout="@layout/layout_telemetry_dashboard"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="top" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnFollow"
+                            style="@style/Widget.Material3.Button.TonalButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="bottom|end"
+                            android:layout_margin="16dp"
+                            android:text="Follow"
+                            android:textSize="12sp"
+                            app:icon="@android:drawable/ic_menu_mylocation" />
 
                         <TextView
                             android:id="@+id/tvMapHint"
@@ -81,9 +99,9 @@
                             android:background="#80000000"
                             android:paddingHorizontal="12dp"
                             android:paddingVertical="4dp"
-                            android:text="Tap map to set destination"
+                            android:text="Pinch to zoom • Tap to set destination"
                             android:textColor="@android:color/white"
-                            android:textSize="12sp"
+                            android:textSize="10sp"
                             android:elevation="5dp" />
                     </FrameLayout>
                 </androidx.cardview.widget.CardView>

@@ -1,28 +1,12 @@
 package com.knightmeya.safetravelmonitor
 
-import android.Manifest
-import android.content.BroadcastReceiver
 import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
-import android.content.pm.PackageManager
-import android.location.Location
-import android.os.Build
+import android.graphics.PointF
 import android.os.Bundle
 import android.view.View
 import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
-import com.google.android.gms.location.FusedLocationProviderClient
-import com.google.android.gms.location.LocationServices
-import com.google.android.gms.maps.CameraUpdateFactory
-import com.google.android.gms.maps.GoogleMap
-import com.google.android.gms.maps.OnMapReadyCallback
-import com.google.android.gms.maps.SupportMapFragment
-import com.google.android.gms.maps.model.LatLng
-import com.google.android.gms.maps.model.MarkerOptions
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import com.knightmeya.safetravelmonitor.databinding.ActivityTravelerBinding
@@ -30,89 +14,92 @@ import com.knightmeya.safetravelmonitor.models.*
 import java.text.SimpleDateFormat
 import java.util.*
 
-class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
+class TravelerActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityTravelerBinding
-    private lateinit var mMap: GoogleMap
-    private lateinit var fusedLocationClient: FusedLocationProviderClient
-    private var travelerMarker: com.google.android.gms.maps.model.Marker? = null
-    private var destinationMarker: com.google.android.gms.maps.model.Marker? = null
     private var isJourneyActive = false
     private var journeyStartTime = 0L
     private var estimatedArrivalTime = 0L
-    private var selectedDestination: LatLng? = null
+    private var selectedDestination: PointF? = null
+    private var currentLocation: PointF? = null
     private var travelMode = "driving"
     private var journeyId: String? = null
     
     private val auth = FirebaseAuth.getInstance()
     private val database = FirebaseDatabase.getInstance().reference
     
-    // Production Mode: Use actual current UID
     private val currentUid: String
         get() = auth.currentUser?.uid ?: throw IllegalStateException("User must be logged in")
     
     private val friendsList = mutableListOf<User>()
     private lateinit var spinnerAdapter: ArrayAdapter<String>
 
-    private val LOCATION_PERMISSION_REQUEST_CODE = 100
-    private val NOTIFICATION_PERMISSION_REQUEST_CODE = 101
-
-    private val locationReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            val lat = intent?.getDoubleExtra("latitude", 0.0) ?: 0.0
-            val lng = intent?.getDoubleExtra("longitude", 0.0) ?: 0.0
-            if (lat != 0.0 && lng != 0.0) {
-                updateTravelerLocationOnMap(LatLng(lat, lng))
-            }
-        }
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityTravelerBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
-
-        setupMapFragment()
+        setupCustomMap()
         setupUI()
         loadFriends()
-        requestLocationPermission()
     }
 
-    override fun onResume() {
-        super.onResume()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(locationReceiver, IntentFilter("LOCATION_UPDATE"), RECEIVER_EXPORTED)
-        } else {
-            @Suppress("UnspecifiedRegisterReceiverFlag")
-            registerReceiver(locationReceiver, IntentFilter("LOCATION_UPDATE"))
-        }
-    }
-
-    override fun onPause() {
-        super.onPause()
-        unregisterReceiver(locationReceiver)
-    }
-
-    private fun setupMapFragment() {
-        val mapFragment = supportFragmentManager.findFragmentById(R.id.map) as SupportMapFragment
-        mapFragment.getMapAsync(this)
-    }
-
-    override fun onMapReady(googleMap: GoogleMap) {
-        mMap = googleMap
-        
-        // ADDED: Re-enable map click to set destination
-        mMap.setOnMapClickListener { latLng ->
+    private fun setupCustomMap() {
+        binding.customMap.onMapClickListener = { point ->
             if (!isJourneyActive) {
-                selectedDestination = latLng
-                updateDestinationMarker(latLng)
+                selectedDestination = point
+                binding.customMap.setDestinationPosition(point.x, point.y)
                 updateETA()
+            } else {
+                // Manual tracking in journey
+                val prevLoc = currentLocation
+                currentLocation = point
+                binding.customMap.setTravelerPosition(point.x, point.y)
+                syncPositionToFirebase(point.x, point.y)
+                updateTelemetry(prevLoc, point)
             }
         }
 
-        getCurrentLocation()
+        var isFollowEnabled = false
+        binding.btnFollow.setOnClickListener {
+            isFollowEnabled = !isFollowEnabled
+            binding.customMap.setFollowMode(isFollowEnabled)
+            binding.btnFollow.alpha = if (isFollowEnabled) 1.0f else 0.5f
+        }
+    }
+
+    private fun updateTelemetry(prev: PointF?, current: PointF) {
+        if (prev != null) {
+            val dx = current.x - prev.x
+            val dy = current.y - prev.y
+            val distance = Math.sqrt((dx * dx + dy * dy).toDouble()).toFloat()
+            
+            // Mock speed calculation based on pixel movement
+            val speed = distance * 0.5f 
+            binding.root.findViewById<android.widget.TextView>(R.id.tvSpeed).text = String.format(Locale.US, "%.1f km/h", speed)
+            
+            // Heading calculation
+            val angle = Math.toDegrees(Math.atan2(dy.toDouble(), dx.toDouble())).toFloat()
+            val heading = when {
+                angle in -45f..45f -> "EAST"
+                angle in 45f..135f -> "SOUTH"
+                angle in -135f..-45f -> "NORTH"
+                else -> "WEST"
+            }
+            binding.root.findViewById<android.widget.TextView>(R.id.tvHeading).text = heading
+        }
+    }
+
+    private fun syncPositionToFirebase(x: Float, y: Float) {
+        val jId = journeyId ?: return
+        val mId = getSharedPreferences("SafeTravelPrefs", Context.MODE_PRIVATE).getString("monitor_id", null) ?: return
+        
+        val update = mapOf(
+            "x" to x,
+            "y" to y,
+            "timestamp" to System.currentTimeMillis()
+        )
+        database.child("monitor_locations").child(mId).child(jId).setValue(update)
     }
 
     private fun setupUI() {
@@ -177,18 +164,11 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
 
     private fun updateETA() {
         selectedDestination?.let {
-            val distance = 5.4 
-            val speed = when(travelMode) {
-                "walking" -> 5
-                "driving" -> 40
-                "transit" -> 25
-                else -> 40
-            }
-            val minutes = (distance / speed * 60).toInt()
+            val minutes = 15 
             estimatedArrivalTime = System.currentTimeMillis() + (minutes * 60 * 1000)
             
-            binding.tvDistance.text = String.format(Locale.getDefault(), "%.1f km", distance)
-            binding.tvDuration.text = String.format(Locale.getDefault(), "%d min", minutes)
+            binding.tvDistance.text = getString(R.string.select_destination)
+            binding.tvDuration.text = getString(R.string.eta, "$minutes min")
             binding.etaPanel.visibility = View.VISIBLE
             binding.btnStartJourney.isEnabled = friendsList.isNotEmpty()
         }
@@ -205,7 +185,7 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
         journeyId = id
 
         database.child("users").child(currentUid).child("name").get().addOnSuccessListener { nameSnapshot ->
-            val myName = nameSnapshot.getValue(String::class.java) ?: "Testing Traveler"
+            val myName = nameSnapshot.getValue(String::class.java) ?: "Traveler"
             
             val request = MonitoringRequest(
                 travelerId = currentUid,
@@ -253,7 +233,7 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
 
         val journey = Journey(
             id = id,
-            destination = MyLatLng(selectedDestination!!.latitude, selectedDestination!!.longitude),
+            destination = MyLatLng(selectedDestination!!.x.toDouble(), selectedDestination!!.y.toDouble()),
             startTime = journeyStartTime,
             estimatedArrivalTime = estimatedArrivalTime,
             isActive = true,
@@ -266,7 +246,6 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
         binding.activeLayout.visibility = View.VISIBLE
         binding.tvStartTime.text = getString(R.string.started_at, SimpleDateFormat("hh:mm a", Locale.getDefault()).format(Date(journeyStartTime)))
         
-        startLocationTracking()
         startTimerUpdates()
     }
 
@@ -293,7 +272,6 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
         isJourneyActive = false
         binding.selectionLayout.visibility = View.VISIBLE
         binding.activeLayout.visibility = View.GONE
-        stopLocationTracking()
     }
 
     private fun sendEmergencyAlert() {
@@ -310,16 +288,6 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
         }
     }
 
-    private fun startLocationTracking() {
-        val intent = Intent(this, LocationTrackingService::class.java)
-        ContextCompat.startForegroundService(this, intent)
-    }
-
-    private fun stopLocationTracking() {
-        val intent = Intent(this, LocationTrackingService::class.java)
-        stopService(intent)
-    }
-
     private fun startTimerUpdates() {
         binding.root.post(object : Runnable {
             override fun run() {
@@ -332,57 +300,5 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
                 }
             }
         })
-    }
-
-    private fun getCurrentLocation() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            fusedLocationClient.lastLocation.addOnSuccessListener { location: Location? ->
-                location?.let {
-                    val currentLatLng = LatLng(it.latitude, it.longitude)
-                    mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, 15f))
-                }
-            }
-        }
-    }
-
-    private fun updateTravelerLocationOnMap(latLng: LatLng) {
-        if (!::mMap.isInitialized) return
-        
-        if (travelerMarker == null) {
-            travelerMarker = mMap.addMarker(MarkerOptions()
-                .position(latLng)
-                .title("You")
-                .icon(com.google.android.gms.maps.model.BitmapDescriptorFactory.defaultMarker(com.google.android.gms.maps.model.BitmapDescriptorFactory.HUE_AZURE)))
-        } else {
-            travelerMarker?.position = latLng
-        }
-
-        if (isJourneyActive) {
-            mMap.animateCamera(CameraUpdateFactory.newLatLng(latLng))
-        }
-    }
-
-    private fun updateDestinationMarker(latLng: LatLng) {
-        destinationMarker?.remove()
-        destinationMarker = mMap.addMarker(MarkerOptions().position(latLng).title("Destination"))
-    }
-
-    private fun requestLocationPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), NOTIFICATION_PERMISSION_REQUEST_CODE)
-            }
-        }
-
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION), LOCATION_PERMISSION_REQUEST_CODE)
-        }
-    }
-
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == LOCATION_PERMISSION_REQUEST_CODE && grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-            getCurrentLocation()
-        }
     }
 }

@@ -1,34 +1,29 @@
 package com.knightmeya.safetravelmonitor
 
+import android.graphics.PointF
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.view.View
+import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.google.android.gms.maps.CameraUpdateFactory
-import com.google.android.gms.maps.GoogleMap
-import com.google.android.gms.maps.OnMapReadyCallback
-import com.google.android.gms.maps.SupportMapFragment
-import com.google.android.gms.maps.model.LatLng
-import com.google.android.gms.maps.model.MarkerOptions
-import com.google.android.gms.maps.model.PolylineOptions
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import com.knightmeya.safetravelmonitor.databinding.ActivityMonitorBinding
 import com.knightmeya.safetravelmonitor.models.*
 import java.util.*
 
-class MonitorActivity : AppCompatActivity(), OnMapReadyCallback {
+class MonitorActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMonitorBinding
-    private lateinit var mMap: GoogleMap
     private var isMonitoring = false
     private var estimatedArrivalTime = 0L
-    private val locationPath = mutableListOf<LatLng>()
     private val notifications = mutableListOf<Notification>()
     private lateinit var adapter: NotificationAdapter
+    
+    private var lastLocation: PointF? = null
     
     private val auth = FirebaseAuth.getInstance()
     private val database = FirebaseDatabase.getInstance().reference
@@ -43,19 +38,8 @@ class MonitorActivity : AppCompatActivity(), OnMapReadyCallback {
         binding = ActivityMonitorBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        setupMapFragment()
         setupUI()
         listenForMonitoringRequests()
-    }
-
-    private fun setupMapFragment() {
-        val mapFragment = supportFragmentManager.findFragmentById(R.id.monitorMap) as SupportMapFragment
-        mapFragment.getMapAsync(this)
-    }
-
-    override fun onMapReady(googleMap: GoogleMap) {
-        mMap = googleMap
-        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(0.0, 0.0), 2f))
     }
 
     private fun setupUI() {
@@ -63,6 +47,13 @@ class MonitorActivity : AppCompatActivity(), OnMapReadyCallback {
         binding.rvNotifications.layoutManager = LinearLayoutManager(this)
         binding.rvNotifications.adapter = adapter
         binding.idInputCard.visibility = View.GONE
+
+        var isFollowEnabled = false
+        binding.btnFollow.setOnClickListener {
+            isFollowEnabled = !isFollowEnabled
+            binding.monitorMap.setFollowMode(isFollowEnabled)
+            binding.btnFollow.alpha = if (isFollowEnabled) 1.0f else 0.5f
+        }
     }
 
     private fun listenForMonitoringRequests() {
@@ -122,15 +113,18 @@ class MonitorActivity : AppCompatActivity(), OnMapReadyCallback {
         isMonitoring = true
         estimatedArrivalTime = journey.estimatedArrivalTime
         
-        val dest = LatLng(journey.destination.latitude, journey.destination.longitude)
-        mMap.clear()
-        mMap.addMarker(MarkerOptions().position(dest).title("Destination"))
-        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(dest, 12f))
+        binding.monitorMap.setDestinationPosition(journey.destination.latitude.toFloat(), journey.destination.longitude.toFloat())
         
         database.child("monitor_locations").child(monitorId).child(journey.id).addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                val loc = snapshot.getValue(LocationUpdate::class.java)
-                loc?.let { onTravelerLocationUpdate(LatLng(it.latitude, it.longitude)) }
+                val x = snapshot.child("x").getValue(Float::class.java) ?: -1f
+                val y = snapshot.child("y").getValue(Float::class.java) ?: -1f
+                if (x != -1f && y != -1f) {
+                    val current = PointF(x, y)
+                    updateTelemetry(lastLocation, current)
+                    lastLocation = current
+                    onTravelerLocationUpdate(x, y)
+                }
             }
             override fun onCancelled(error: DatabaseError) {}
         })
@@ -148,6 +142,26 @@ class MonitorActivity : AppCompatActivity(), OnMapReadyCallback {
 
         binding.activeJourneyInfo.visibility = View.VISIBLE
         startCountdownTimer()
+    }
+
+    private fun updateTelemetry(prev: PointF?, current: PointF) {
+        if (prev != null) {
+            val dx = current.x - prev.x
+            val dy = current.y - prev.y
+            val distance = Math.sqrt((dx * dx + dy * dy).toDouble()).toFloat()
+            
+            val speed = distance * 0.5f 
+            findViewById<TextView>(R.id.tvSpeed).text = String.format(Locale.US, "%.1f km/h", speed)
+            
+            val angle = Math.toDegrees(Math.atan2(dy.toDouble(), dx.toDouble())).toFloat()
+            val heading = when {
+                angle in -45f..45f -> "EAST"
+                angle in 45f..135f -> "SOUTH"
+                angle in -135f..-45f -> "NORTH"
+                else -> "WEST"
+            }
+            findViewById<TextView>(R.id.tvHeading).text = heading
+        }
     }
 
     private fun stopMonitoring() {
@@ -187,25 +201,7 @@ class MonitorActivity : AppCompatActivity(), OnMapReadyCallback {
         })
     }
 
-    fun onTravelerLocationUpdate(location: LatLng) {
-        locationPath.add(location)
-        mMap.clear()
-        // Re-add destination marker if we have a journey
-        // Note: For simplicity, we just clear and redraw everything to avoid multiple traveler markers
-        // In a production app, we'd manage marker instances.
-        
-        mMap.addMarker(MarkerOptions()
-            .position(location)
-            .title("Traveler Location")
-            .icon(com.google.android.gms.maps.model.BitmapDescriptorFactory.defaultMarker(com.google.android.gms.maps.model.BitmapDescriptorFactory.HUE_AZURE)))
-
-        if (locationPath.size > 1) {
-            mMap.addPolyline(PolylineOptions()
-                .addAll(locationPath)
-                .width(8f)
-                .color(getColor(R.color.traveler_header_start))
-                .geodesic(true))
-        }
-        mMap.animateCamera(CameraUpdateFactory.newLatLng(location))
+    private fun onTravelerLocationUpdate(x: Float, y: Float) {
+        binding.monitorMap.setTravelerPosition(x, y)
     }
 }
