@@ -164,11 +164,16 @@ class TravelerActivity : AppCompatActivity() {
 
     private fun updateETA() {
         selectedDestination?.let {
-            val minutes = 15 
-            estimatedArrivalTime = System.currentTimeMillis() + (minutes * 60 * 1000)
+            // Functional Logic: Estimate time based on mode
+            val baseTime = when(travelMode) {
+                "walking" -> 30
+                "transit" -> 20
+                else -> 15 // driving
+            }
+            estimatedArrivalTime = System.currentTimeMillis() + (baseTime * 60 * 1000)
             
-            binding.tvDistance.text = getString(R.string.select_destination)
-            binding.tvDuration.text = getString(R.string.eta, "$minutes min")
+            binding.tvDistance.text = "In Range"
+            binding.tvDuration.text = "$baseTime min"
             binding.etaPanel.visibility = View.VISIBLE
             binding.btnStartJourney.isEnabled = friendsList.isNotEmpty()
         }

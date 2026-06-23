@@ -46,6 +46,7 @@ class MainActivity : AppCompatActivity() {
             
             loadUserInfo(currentUser.uid)
             listenForMonitoringRequests()
+            listenForFriendRequests()
         } catch (e: Exception) {
             e.printStackTrace()
             Toast.makeText(this, "Error starting app: ${e.message}", Toast.LENGTH_LONG).show()
@@ -60,6 +61,21 @@ class MainActivity : AppCompatActivity() {
                 if (request.status == "pending") {
                     showMonitoringRequestDialog(request)
                 }
+            }
+            override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {}
+            override fun onChildRemoved(snapshot: DataSnapshot) {}
+            override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {}
+            override fun onCancelled(error: DatabaseError) {}
+        })
+    }
+
+    private fun listenForFriendRequests() {
+        val myUid = auth.currentUser?.uid ?: return
+        database.child("friend_requests").child(myUid).addChildEventListener(object : ChildEventListener {
+            override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
+                val request = snapshot.getValue(FriendRequest::class.java) ?: return
+                Toast.makeText(this@MainActivity, "New friend request from ${request.fromName}", Toast.LENGTH_LONG).show()
+                // Optionally show a dialog or update a badge
             }
             override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {}
             override fun onChildRemoved(snapshot: DataSnapshot) {}

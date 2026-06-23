@@ -28,12 +28,10 @@ class FriendsActivity : AppCompatActivity() {
         binding = ActivityFriendsBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        /*
         if (currentUser == null) {
             finish()
             return
         }
-        */
 
         binding.btnSendRequest.setOnClickListener {
             sendFriendRequest()
