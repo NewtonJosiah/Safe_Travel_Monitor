@@ -1,11 +1,13 @@
 package com.knightmeya.safetravelmonitor
 
+import android.graphics.Color
 import android.graphics.PointF
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.view.View
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -38,15 +40,26 @@ class MonitorActivity : AppCompatActivity() {
         binding = ActivityMonitorBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        setupCustomMap()
         setupUI()
         listenForMonitoringRequests()
     }
 
-    private fun setupUI() {
-        adapter = NotificationAdapter(notifications)
-        binding.rvNotifications.layoutManager = LinearLayoutManager(this)
-        binding.rvNotifications.adapter = adapter
-        binding.idInputCard.visibility = View.GONE
+    private fun setupCustomMap() {
+        val pois = listOf(
+            MapFeature("Supermarket", "shop", 0.3f, 0.4f, Color.YELLOW),
+            MapFeature("Main Hospital", "hospital", 0.7f, 0.2f, Color.RED),
+            MapFeature("Local Market", "market", 0.5f, 0.8f, Color.GREEN),
+            MapFeature("Post Office", "government", 0.2f, 0.7f, Color.CYAN)
+        )
+        binding.monitorMap.setPOIs(pois)
+
+        var isSatellite = false
+        binding.btnLayers.setOnClickListener {
+            isSatellite = !isSatellite
+            binding.monitorMap.setSatelliteView(isSatellite)
+            Toast.makeText(this, if (isSatellite) "Satellite View" else "Normal View", Toast.LENGTH_SHORT).show()
+        }
 
         var isFollowEnabled = false
         binding.btnFollow.setOnClickListener {
@@ -54,6 +67,13 @@ class MonitorActivity : AppCompatActivity() {
             binding.monitorMap.setFollowMode(isFollowEnabled)
             binding.btnFollow.alpha = if (isFollowEnabled) 1.0f else 0.5f
         }
+    }
+
+    private fun setupUI() {
+        adapter = NotificationAdapter(notifications)
+        binding.rvNotifications.layoutManager = LinearLayoutManager(this)
+        binding.rvNotifications.adapter = adapter
+        binding.idInputCard.visibility = View.GONE
     }
 
     private fun listenForMonitoringRequests() {

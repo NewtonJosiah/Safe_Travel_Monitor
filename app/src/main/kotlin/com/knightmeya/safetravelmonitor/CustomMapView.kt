@@ -7,12 +7,16 @@ import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import android.view.View
+import com.knightmeya.safetravelmonitor.models.MapFeature
 import kotlin.math.max
 import kotlin.math.min
 
 class CustomMapView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
 
-    private var mapBitmap: Bitmap? = null
+    private var normalBitmap: Bitmap? = null
+    private var satelliteBitmap: Bitmap? = null
+    private var currentBitmap: Bitmap? = null
+    
     private val matrix = Matrix()
     private val inverseMatrix = Matrix()
     
@@ -23,17 +27,18 @@ class CustomMapView(context: Context, attrs: AttributeSet?) : View(context, attr
     private var travelerPos: PointF? = null
     private var destinationPos: PointF? = null
     private val travelerHistory = mutableListOf<PointF>()
+    private val poiList = mutableListOf<MapFeature>()
     
     private var followMode = false
     
     private val travelerPaint = Paint().apply {
-        color = Color.parseColor("#3B82F6") // Blue-500
+        color = Color.parseColor("#3B82F6")
         style = Paint.Style.FILL
         isAntiAlias = true
     }
     
     private val pathPaint = Paint().apply {
-        color = Color.parseColor("#60A5FA") // Blue-400
+        color = Color.parseColor("#60A5FA")
         strokeWidth = 5f
         style = Paint.Style.STROKE
         strokeCap = Paint.Cap.ROUND
@@ -41,18 +46,38 @@ class CustomMapView(context: Context, attrs: AttributeSet?) : View(context, attr
     }
     
     private val destinationPaint = Paint().apply {
-        color = Color.parseColor("#EF4444") // Red-500
+        color = Color.parseColor("#EF4444")
         style = Paint.Style.FILL
         isAntiAlias = true
+    }
+
+    private val poiPaint = Paint().apply {
+        textSize = 24f
+        isAntiAlias = true
+        textAlign = Paint.Align.CENTER
     }
 
     var onMapClickListener: ((PointF) -> Unit)? = null
 
     init {
-        val resId = context.resources.getIdentifier("custom_map", "drawable", context.packageName)
-        if (resId != 0) {
-            mapBitmap = BitmapFactory.decodeResource(resources, resId)
-        }
+        val normalId = resources.getIdentifier("custom_map", "drawable", context.packageName)
+        if (normalId != 0) normalBitmap = BitmapFactory.decodeResource(resources, normalId)
+        
+        val satId = resources.getIdentifier("custom_map_sat", "drawable", context.packageName)
+        if (satId != 0) satelliteBitmap = BitmapFactory.decodeResource(resources, satId)
+        
+        currentBitmap = normalBitmap
+    }
+
+    fun setSatelliteView(isSatellite: Boolean) {
+        currentBitmap = if (isSatellite) satelliteBitmap ?: normalBitmap else normalBitmap
+        invalidate()
+    }
+
+    fun setPOIs(pois: List<MapFeature>) {
+        poiList.clear()
+        poiList.addAll(pois)
+        invalidate()
     }
 
     fun setFollowMode(enabled: Boolean) {
@@ -93,11 +118,24 @@ class CustomMapView(context: Context, attrs: AttributeSet?) : View(context, attr
         canvas.save()
         canvas.concat(matrix)
 
-        mapBitmap?.let {
+        currentBitmap?.let {
             canvas.drawBitmap(it, 0f, 0f, null)
+            
+            // Draw POIs scaled to bitmap dimensions
+            poiList.forEach { poi ->
+                val px = poi.xPercent * it.width
+                val py = poi.yPercent * it.height
+                
+                poiPaint.color = poi.color
+                canvas.drawCircle(px, py, 10f / scaleFactor, poiPaint)
+                
+                poiPaint.color = Color.WHITE
+                poiPaint.textSize = 20f / scaleFactor
+                canvas.drawText(poi.name, px, py - (15f / scaleFactor), poiPaint)
+            }
         }
 
-        // Draw Path (History)
+        // Draw Path
         if (travelerHistory.size > 1) {
             val path = Path()
             path.moveTo(travelerHistory[0].x, travelerHistory[0].y)

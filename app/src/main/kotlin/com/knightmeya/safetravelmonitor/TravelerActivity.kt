@@ -1,6 +1,7 @@
 package com.knightmeya.safetravelmonitor
 
 import android.content.Context
+import android.graphics.Color
 import android.graphics.PointF
 import android.os.Bundle
 import android.view.View
@@ -45,13 +46,21 @@ class TravelerActivity : AppCompatActivity() {
     }
 
     private fun setupCustomMap() {
+        // Load refined POIs from design
+        val pois = listOf(
+            MapFeature("Supermarket", "shop", 0.3f, 0.4f, Color.YELLOW),
+            MapFeature("Main Hospital", "hospital", 0.7f, 0.2f, Color.RED),
+            MapFeature("Local Market", "market", 0.5f, 0.8f, Color.GREEN),
+            MapFeature("Post Office", "government", 0.2f, 0.7f, Color.CYAN)
+        )
+        binding.customMap.setPOIs(pois)
+
         binding.customMap.onMapClickListener = { point ->
             if (!isJourneyActive) {
                 selectedDestination = point
                 binding.customMap.setDestinationPosition(point.x, point.y)
                 updateETA()
             } else {
-                // Manual tracking in journey
                 val prevLoc = currentLocation
                 currentLocation = point
                 binding.customMap.setTravelerPosition(point.x, point.y)
@@ -66,6 +75,13 @@ class TravelerActivity : AppCompatActivity() {
             binding.customMap.setFollowMode(isFollowEnabled)
             binding.btnFollow.alpha = if (isFollowEnabled) 1.0f else 0.5f
         }
+
+        var isSatellite = false
+        binding.btnLayers.setOnClickListener {
+            isSatellite = !isSatellite
+            binding.customMap.setSatelliteView(isSatellite)
+            Toast.makeText(this, if (isSatellite) "Satellite View" else "Normal View", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun updateTelemetry(prev: PointF?, current: PointF) {
@@ -74,11 +90,9 @@ class TravelerActivity : AppCompatActivity() {
             val dy = current.y - prev.y
             val distance = Math.sqrt((dx * dx + dy * dy).toDouble()).toFloat()
             
-            // Mock speed calculation based on pixel movement
             val speed = distance * 0.5f 
-            binding.root.findViewById<android.widget.TextView>(R.id.tvSpeed).text = String.format(Locale.US, "%.1f km/h", speed)
+            findViewById<android.widget.TextView>(R.id.tvSpeed).text = String.format(Locale.US, "%.1f km/h", speed)
             
-            // Heading calculation
             val angle = Math.toDegrees(Math.atan2(dy.toDouble(), dx.toDouble())).toFloat()
             val heading = when {
                 angle in -45f..45f -> "EAST"
@@ -86,7 +100,7 @@ class TravelerActivity : AppCompatActivity() {
                 angle in -135f..-45f -> "NORTH"
                 else -> "WEST"
             }
-            binding.root.findViewById<android.widget.TextView>(R.id.tvHeading).text = heading
+            findViewById<android.widget.TextView>(R.id.tvHeading).text = heading
         }
     }
 
@@ -126,13 +140,15 @@ class TravelerActivity : AppCompatActivity() {
                 friendsList.clear()
                 val friendNames = mutableListOf<String>()
                 
-                val friendsCount = snapshot.childrenCount
-                if (friendsCount == 0L) {
+                if (!snapshot.exists() || snapshot.childrenCount == 0L) {
                     spinnerAdapter.clear()
-                    spinnerAdapter.add("No friends added yet")
+                    spinnerAdapter.add("No monitors available")
                     spinnerAdapter.notifyDataSetChanged()
                     return
                 }
+
+                val totalFriends = snapshot.childrenCount
+                var loadedCount = 0
 
                 snapshot.children.forEach { friendSnapshot ->
                     val friendUid = friendSnapshot.key ?: return@forEach
@@ -141,16 +157,28 @@ class TravelerActivity : AppCompatActivity() {
                         user?.let {
                             friendsList.add(it)
                             friendNames.add(it.name)
-                            if (friendsList.size.toLong() == friendsCount) {
-                                spinnerAdapter.clear()
-                                spinnerAdapter.addAll(friendNames)
-                                spinnerAdapter.notifyDataSetChanged()
-                            }
+                        }
+                        loadedCount++
+                        if (loadedCount.toLong() == totalFriends) {
+                            spinnerAdapter.clear()
+                            spinnerAdapter.addAll(friendNames)
+                            spinnerAdapter.notifyDataSetChanged()
+                        }
+                    }.addOnFailureListener {
+                        loadedCount++
+                        if (loadedCount.toLong() == totalFriends && friendsList.isEmpty()) {
+                            spinnerAdapter.clear()
+                            spinnerAdapter.add("Error loading friends")
+                            spinnerAdapter.notifyDataSetChanged()
                         }
                     }
                 }
             }
-            override fun onCancelled(error: DatabaseError) {}
+            override fun onCancelled(error: DatabaseError) {
+                spinnerAdapter.clear()
+                spinnerAdapter.add("Connection error")
+                spinnerAdapter.notifyDataSetChanged()
+            }
         })
     }
 
@@ -164,11 +192,10 @@ class TravelerActivity : AppCompatActivity() {
 
     private fun updateETA() {
         selectedDestination?.let {
-            // Functional Logic: Estimate time based on mode
             val baseTime = when(travelMode) {
                 "walking" -> 30
                 "transit" -> 20
-                else -> 15 // driving
+                else -> 15
             }
             estimatedArrivalTime = System.currentTimeMillis() + (baseTime * 60 * 1000)
             
@@ -180,8 +207,9 @@ class TravelerActivity : AppCompatActivity() {
     }
 
     private fun requestMonitoring() {
-        if (binding.spinnerFriends.selectedItemPosition < 0 || friendsList.isEmpty()) {
-            Toast.makeText(this, "Please select a monitor", Toast.LENGTH_SHORT).show()
+        if (binding.spinnerFriends.selectedItemPosition < 0 || friendsList.isEmpty() || 
+            binding.spinnerFriends.selectedItem.toString() == "No monitors available") {
+            Toast.makeText(this, "Please select a valid monitor", Toast.LENGTH_SHORT).show()
             return
         }
 
