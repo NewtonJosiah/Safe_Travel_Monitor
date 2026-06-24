@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="800dp"
+    android:height="800dp"
+    android:viewportWidth="800"
+    android:viewportHeight="800">
+    <!-- Grid Background -->
+    <path
+        android:fillColor="#1E293B"
+        android:pathData="M0,0h800v800h-800z" />
+    <path
+        android:strokeColor="#334155"
+        android:strokeWidth="1"
+        android:pathData="M0,100h800 M0,200h800 M0,300h800 M0,400h800 M0,500h800 M0,600h800 M0,700h800 M100,0v800 M200,0v800 M300,0v800 M400,0v800 M500,0v800 M600,0v800 M700,0v800" />
+    <!-- Reference Landmark -->
+    <path
+        android:fillColor="#334155"
+        android:pathData="M350,350h100v100h-100z" />
+</vector>
