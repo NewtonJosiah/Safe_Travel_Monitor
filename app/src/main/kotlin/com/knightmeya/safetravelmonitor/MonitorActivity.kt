@@ -47,10 +47,10 @@ class MonitorActivity : AppCompatActivity() {
 
     private fun setupCustomMap() {
         val pois = listOf(
-            MapFeature("Supermarket", "shop", 0.3f, 0.4f, Color.YELLOW),
-            MapFeature("Main Hospital", "hospital", 0.7f, 0.2f, Color.RED),
-            MapFeature("Local Market", "market", 0.5f, 0.8f, Color.GREEN),
-            MapFeature("Post Office", "government", 0.2f, 0.7f, Color.CYAN)
+            MapFeature("Supermarket", "shop", 0.3f, 0.4f, Color.YELLOW, R.drawable.ic_shopping_cart),
+            MapFeature("Main Hospital", "hospital", 0.7f, 0.2f, Color.RED, R.drawable.ic_hospital),
+            MapFeature("Local Market", "market", 0.5f, 0.8f, Color.GREEN, R.drawable.ic_store),
+            MapFeature("Post Office", "government", 0.2f, 0.7f, Color.CYAN, R.drawable.ic_store)
         )
         binding.monitorMap.setPOIs(pois)
 
@@ -139,6 +139,15 @@ class MonitorActivity : AppCompatActivity() {
             override fun onDataChange(snapshot: DataSnapshot) {
                 val x = snapshot.child("x").getValue(Float::class.java) ?: -1f
                 val y = snapshot.child("y").getValue(Float::class.java) ?: -1f
+                val battery = snapshot.child("battery").getValue(Int::class.java) ?: -1
+                
+                if (battery != -1) {
+                    findViewById<TextView>(R.id.tvBattery).text = "$battery%"
+                    findViewById<TextView>(R.id.tvBattery).setTextColor(
+                        if (battery < 20) Color.RED else Color.parseColor("#22C55E")
+                    )
+                }
+
                 if (x != -1f && y != -1f) {
                     val current = PointF(x, y)
                     updateTelemetry(lastLocation, current)

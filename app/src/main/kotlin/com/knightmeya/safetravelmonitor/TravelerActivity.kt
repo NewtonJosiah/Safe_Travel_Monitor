@@ -43,15 +43,26 @@ class TravelerActivity : AppCompatActivity() {
         setupCustomMap()
         setupUI()
         loadFriends()
+        startBatteryMonitoring()
+    }
+
+    private fun startBatteryMonitoring() {
+        val filter = android.content.IntentFilter(Intent.ACTION_BATTERY_CHANGED)
+        val batteryStatus: Intent? = registerReceiver(null, filter)
+        val level: Int = batteryStatus?.getIntExtra(android.os.BatteryManager.EXTRA_LEVEL, -1) ?: -1
+        val scale: Int = batteryStatus?.getIntExtra(android.os.BatteryManager.EXTRA_SCALE, -1) ?: -1
+        val batteryPct = (level * 100 / scale.toFloat()).toInt()
+        
+        binding.root.findViewById<android.widget.TextView>(R.id.tvBattery).text = "$batteryPct%"
     }
 
     private fun setupCustomMap() {
-        // Load refined POIs from design
+        // Load refined POIs with icons
         val pois = listOf(
-            MapFeature("Supermarket", "shop", 0.3f, 0.4f, Color.YELLOW),
-            MapFeature("Main Hospital", "hospital", 0.7f, 0.2f, Color.RED),
-            MapFeature("Local Market", "market", 0.5f, 0.8f, Color.GREEN),
-            MapFeature("Post Office", "government", 0.2f, 0.7f, Color.CYAN)
+            MapFeature("Supermarket", "shop", 0.3f, 0.4f, Color.YELLOW, R.drawable.ic_shopping_cart),
+            MapFeature("Main Hospital", "hospital", 0.7f, 0.2f, Color.RED, R.drawable.ic_hospital),
+            MapFeature("Local Market", "market", 0.5f, 0.8f, Color.GREEN, R.drawable.ic_store),
+            MapFeature("Post Office", "government", 0.2f, 0.7f, Color.CYAN, R.drawable.ic_store)
         )
         binding.customMap.setPOIs(pois)
 
@@ -108,9 +119,17 @@ class TravelerActivity : AppCompatActivity() {
         val jId = journeyId ?: return
         val mId = getSharedPreferences("SafeTravelPrefs", Context.MODE_PRIVATE).getString("monitor_id", null) ?: return
         
+        // Include battery in sync
+        val filter = android.content.IntentFilter(Intent.ACTION_BATTERY_CHANGED)
+        val batteryStatus: Intent? = registerReceiver(null, filter)
+        val level: Int = batteryStatus?.getIntExtra(android.os.BatteryManager.EXTRA_LEVEL, -1) ?: -1
+        val scale: Int = batteryStatus?.getIntExtra(android.os.BatteryManager.EXTRA_SCALE, -1) ?: -1
+        val batteryPct = (level * 100 / scale.toFloat()).toInt()
+
         val update = mapOf(
             "x" to x,
             "y" to y,
+            "battery" to batteryPct,
             "timestamp" to System.currentTimeMillis()
         )
         database.child("monitor_locations").child(mId).child(jId).setValue(update)
@@ -161,14 +180,22 @@ class TravelerActivity : AppCompatActivity() {
                         loadedCount++
                         if (loadedCount.toLong() == totalFriends) {
                             spinnerAdapter.clear()
-                            spinnerAdapter.addAll(friendNames)
+                            if (friendNames.isEmpty()) {
+                                spinnerAdapter.add("No monitors available")
+                            } else {
+                                spinnerAdapter.addAll(friendNames)
+                            }
                             spinnerAdapter.notifyDataSetChanged()
                         }
                     }.addOnFailureListener {
                         loadedCount++
-                        if (loadedCount.toLong() == totalFriends && friendsList.isEmpty()) {
+                        if (loadedCount.toLong() == totalFriends) {
                             spinnerAdapter.clear()
-                            spinnerAdapter.add("Error loading friends")
+                            if (friendsList.isEmpty()) {
+                                spinnerAdapter.add("No monitors available")
+                            } else {
+                                spinnerAdapter.addAll(friendNames)
+                            }
                             spinnerAdapter.notifyDataSetChanged()
                         }
                     }

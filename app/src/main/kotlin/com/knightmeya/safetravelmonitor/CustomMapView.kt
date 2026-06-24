@@ -121,17 +121,36 @@ class CustomMapView(context: Context, attrs: AttributeSet?) : View(context, attr
         currentBitmap?.let {
             canvas.drawBitmap(it, 0f, 0f, null)
             
-            // Draw POIs scaled to bitmap dimensions
+            // Draw POIs
             poiList.forEach { poi ->
                 val px = poi.xPercent * it.width
                 val py = poi.yPercent * it.height
                 
-                poiPaint.color = poi.color
-                canvas.drawCircle(px, py, 10f / scaleFactor, poiPaint)
+                // Draw Icon if available
+                poi.iconResId?.let { resId ->
+                    val drawable = context.getDrawable(resId)
+                    drawable?.let { d ->
+                        val size = (32f / scaleFactor).toInt()
+                        d.setBounds(
+                            (px - size / 2).toInt(),
+                            (py - size / 2).toInt(),
+                            (px + size / 2).toInt(),
+                            (py + size / 2).toInt()
+                        )
+                        d.setTint(poi.color)
+                        d.draw(canvas)
+                    }
+                } ?: run {
+                    poiPaint.color = poi.color
+                    canvas.drawCircle(px, py, 10f / scaleFactor, poiPaint)
+                }
                 
+                // Draw Label
                 poiPaint.color = Color.WHITE
-                poiPaint.textSize = 20f / scaleFactor
-                canvas.drawText(poi.name, px, py - (15f / scaleFactor), poiPaint)
+                poiPaint.textSize = 18f / scaleFactor
+                poiPaint.setShadowLayer(2f, 0f, 0f, Color.BLACK)
+                canvas.drawText(poi.name, px, py + (35f / scaleFactor), poiPaint)
+                poiPaint.clearShadowLayer()
             }
         }
 
