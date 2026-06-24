@@ -162,13 +162,13 @@ class TravelerActivity : AppCompatActivity() {
                 
                 if (!snapshot.exists() || snapshot.childrenCount == 0L) {
                     spinnerAdapter.clear()
-                    spinnerAdapter.add("No monitors available")
+                    spinnerAdapter.add("No monitors available (Add friends first)")
                     spinnerAdapter.notifyDataSetChanged()
                     return
                 }
 
                 val totalFriends = snapshot.childrenCount
-                var loadedCount = 0
+                var processedCount = 0
 
                 snapshot.children.forEach { friendSnapshot ->
                     val friendUid = friendSnapshot.key ?: return@forEach
@@ -178,21 +178,11 @@ class TravelerActivity : AppCompatActivity() {
                             friendsList.add(it)
                             friendNames.add(it.name)
                         }
-                        loadedCount++
-                        if (loadedCount.toLong() == totalFriends) {
+                    }.addOnCompleteListener {
+                        processedCount++
+                        if (processedCount.toLong() == totalFriends) {
                             spinnerAdapter.clear()
                             if (friendNames.isEmpty()) {
-                                spinnerAdapter.add("No monitors available")
-                            } else {
-                                spinnerAdapter.addAll(friendNames)
-                            }
-                            spinnerAdapter.notifyDataSetChanged()
-                        }
-                    }.addOnFailureListener {
-                        loadedCount++
-                        if (loadedCount.toLong() == totalFriends) {
-                            spinnerAdapter.clear()
-                            if (friendsList.isEmpty()) {
                                 spinnerAdapter.add("No monitors available")
                             } else {
                                 spinnerAdapter.addAll(friendNames)

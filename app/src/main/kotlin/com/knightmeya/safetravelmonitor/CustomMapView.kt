@@ -69,9 +69,37 @@ class CustomMapView(context: Context, attrs: AttributeSet?) : View(context, attr
         currentBitmap = normalBitmap
     }
 
-    fun setSatelliteView(isSatellite: Boolean) {
-        currentBitmap = if (isSatellite) satelliteBitmap ?: normalBitmap else normalBitmap
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        if (w > 0 && h > 0) {
+            centerMap()
+        }
+    }
+
+    private fun centerMap() {
+        val bitmap = currentBitmap ?: return
+        val viewWidth = width.toFloat()
+        val viewHeight = height.toFloat()
+        
+        val scaleX = viewWidth / bitmap.width
+        val scaleY = viewHeight / bitmap.height
+        scaleFactor = min(scaleX, scaleY)
+        
+        matrix.reset()
+        matrix.postScale(scaleFactor, scaleFactor)
+        matrix.postTranslate(
+            (viewWidth - bitmap.width * scaleFactor) / 2f,
+            (viewHeight - bitmap.height * scaleFactor) / 2f
+        )
         invalidate()
+    }
+
+    fun setSatelliteView(isSatellite: Boolean) {
+        val oldBitmap = currentBitmap
+        currentBitmap = if (isSatellite) satelliteBitmap ?: normalBitmap else normalBitmap
+        if (currentBitmap != oldBitmap) {
+            centerMap()
+        }
     }
 
     fun setPOIs(pois: List<MapFeature>) {
@@ -115,6 +143,18 @@ class CustomMapView(context: Context, attrs: AttributeSet?) : View(context, attr
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
+        
+        if (currentBitmap == null) {
+            // Draw a helpful message if no map image is found
+            val paint = Paint().apply {
+                color = Color.DKGRAY
+                textSize = 40f
+                textAlign = Paint.Align.CENTER
+            }
+            canvas.drawText("Waiting for custom_map.png...", width/2f, height/2f, paint)
+            return
+        }
+
         canvas.save()
         canvas.concat(matrix)
 
