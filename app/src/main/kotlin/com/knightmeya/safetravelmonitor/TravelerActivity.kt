@@ -1,6 +1,7 @@
 package com.knightmeya.safetravelmonitor
 
 import android.content.Context
+import android.content.Intent
 import android.graphics.Color
 import android.graphics.PointF
 import android.os.Bundle
