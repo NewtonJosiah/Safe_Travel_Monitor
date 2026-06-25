@@ -154,12 +154,15 @@ class TravelerActivity : AppCompatActivity() {
 
     private fun loadFriends() {
         val uid = auth.currentUser?.uid ?: return
+        android.util.Log.d("TravelerDebug", "Loading friends for UID: $uid")
 
         database.child("users").child(uid).child("friends").addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 friendsList.clear()
                 val friendNames = mutableListOf<String>()
                 
+                android.util.Log.d("TravelerDebug", "Friends snapshot exists: ${snapshot.exists()}, children: ${snapshot.childrenCount}")
+
                 if (!snapshot.exists() || snapshot.childrenCount == 0L) {
                     spinnerAdapter.clear()
                     spinnerAdapter.add("No monitors available (Add friends first)")
@@ -172,8 +175,11 @@ class TravelerActivity : AppCompatActivity() {
 
                 snapshot.children.forEach { friendSnapshot ->
                     val friendUid = friendSnapshot.key ?: return@forEach
+                    android.util.Log.d("TravelerDebug", "Fetching friend data for: $friendUid")
+
                     database.child("users").child(friendUid).get().addOnSuccessListener { userSnapshot ->
                         val user = userSnapshot.getValue(User::class.java)
+                        android.util.Log.d("TravelerDebug", "User data for $friendUid: ${user?.name}")
                         user?.let {
                             friendsList.add(it)
                             friendNames.add(it.name)
@@ -188,14 +194,13 @@ class TravelerActivity : AppCompatActivity() {
                                 spinnerAdapter.addAll(friendNames)
                             }
                             spinnerAdapter.notifyDataSetChanged()
+                            android.util.Log.d("TravelerDebug", "Spinner updated with ${friendNames.size} names")
                         }
                     }
                 }
             }
             override fun onCancelled(error: DatabaseError) {
-                spinnerAdapter.clear()
-                spinnerAdapter.add("Connection error")
-                spinnerAdapter.notifyDataSetChanged()
+                android.util.Log.e("TravelerDebug", "Load friends cancelled: ${error.message}")
             }
         })
     }

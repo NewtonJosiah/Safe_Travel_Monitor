@@ -60,13 +60,31 @@ class CustomMapView(context: Context, attrs: AttributeSet?) : View(context, attr
     var onMapClickListener: ((PointF) -> Unit)? = null
 
     init {
-        val normalId = resources.getIdentifier("custom_map", "drawable", context.packageName)
-        if (normalId != 0) normalBitmap = BitmapFactory.decodeResource(resources, normalId)
-        
-        val satId = resources.getIdentifier("custom_map_sat", "drawable", context.packageName)
-        if (satId != 0) satelliteBitmap = BitmapFactory.decodeResource(resources, satId)
-        
+        normalBitmap = getResBitmap("custom_map")
+        satelliteBitmap = getResBitmap("custom_map_sat")
         currentBitmap = normalBitmap
+    }
+
+    private fun getResBitmap(resName: String): Bitmap? {
+        val resId = resources.getIdentifier(resName, "drawable", context.packageName)
+        if (resId == 0) return null
+        
+        val drawable = androidx.core.content.res.ResourcesCompat.getDrawable(resources, resId, null) ?: return null
+        
+        // Handle both BitmapDrawable and VectorDrawable
+        if (drawable is android.graphics.drawable.BitmapDrawable) {
+            return drawable.bitmap
+        }
+        
+        val bitmap = Bitmap.createBitmap(
+            drawable.intrinsicWidth.let { if (it <= 0) 1000 else it },
+            drawable.intrinsicHeight.let { if (it <= 0) 1000 else it },
+            Bitmap.Config.ARGB_8888
+        )
+        val canvas = Canvas(bitmap)
+        drawable.setBounds(0, 0, canvas.width, canvas.height)
+        drawable.draw(canvas)
+        return bitmap
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
