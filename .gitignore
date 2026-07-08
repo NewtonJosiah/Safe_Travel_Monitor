@@ -1,0 +1,22 @@
+# Gradle
+.gradle/
+build/
+app/build/
+
+# Android Studio
+.idea/
+*.iml
+*.iws
+
+# User-specific
+local.properties
+.artifacts/
+
+# Flutter (if any)
+flutter_module/
+.pub-cache/
+.pub/
+
+# Temp files
+*.tmp
+*.log
