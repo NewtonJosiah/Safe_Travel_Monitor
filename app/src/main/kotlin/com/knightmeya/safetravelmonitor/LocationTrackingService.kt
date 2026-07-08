@@ -9,6 +9,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.IBinder
 import android.os.Looper
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.google.android.gms.location.*
@@ -39,6 +40,13 @@ class LocationTrackingService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // Fix #8 & #10: Validate journey data before starting service
+        if (journeyId.isNullOrEmpty() || monitorId.isNullOrEmpty()) {
+            Log.w("LocationTrackingService", "No active journey - stopping service")
+            stopSelf()
+            return START_NOT_STICKY
+        }
+        
         startForegroundService()
         startLocationUpdates()
         return START_STICKY
@@ -83,6 +91,9 @@ class LocationTrackingService : Service() {
                             timestamp = System.currentTimeMillis()
                         )
                         database.child("monitor_locations").child(mId).child(jId).setValue(update)
+                            .addOnFailureListener { e ->
+                                Log.e("LocationTrackingService", "Failed to update location", e)
+                            }
                     }
 
                     // Also send local broadcast
@@ -95,11 +106,19 @@ class LocationTrackingService : Service() {
         }
 
         if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            fusedLocationClient.requestLocationUpdates(
-                locationRequest,
-                locationCallback,
-                Looper.getMainLooper()
-            )
+            try {
+                fusedLocationClient.requestLocationUpdates(
+                    locationRequest,
+                    locationCallback,
+                    Looper.getMainLooper()
+                )
+            } catch (e: Exception) {
+                Log.e("LocationTrackingService", "Failed to request location updates", e)
+                stopSelf()
+            }
+        } else {
+            Log.w("LocationTrackingService", "Location permission not granted")
+            stopSelf()
         }
     }
 
@@ -116,10 +135,14 @@ class LocationTrackingService : Service() {
     }
 
     override fun onDestroy() {
-        super.onDestroy()
-        if (::locationCallback.isInitialized) {
-            fusedLocationClient.removeLocationUpdates(locationCallback)
+        try {
+            if (::locationCallback.isInitialized) {
+                fusedLocationClient.removeLocationUpdates(locationCallback)
+            }
+        } catch (e: Exception) {
+            Log.e("LocationTrackingService", "Failed to remove location updates", e)
         }
+        super.onDestroy()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null

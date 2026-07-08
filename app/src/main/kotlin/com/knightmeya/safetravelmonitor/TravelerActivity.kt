@@ -72,6 +72,7 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
 
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var locationCallback: LocationCallback
+    private var approvalListener: ValueEventListener? = null
 
     private val timerRunnable = object : Runnable {
         override fun run() {
@@ -205,8 +206,9 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
         val oldETA = estimatedArrivalTime
         estimatedArrivalTime = System.currentTimeMillis() + (remainingHours * 3600000).toLong()
 
-        // Sync updated ETA to Monitor
-        if (isJourneyActive && abs(estimatedArrivalTime - oldETA) > 30000) { // Sync if diff > 30s
+        // Sync updated ETA to Monitor on every significant location update
+        // This ensures monitor always has fresh ETA data
+        if (isJourneyActive && abs(estimatedArrivalTime - oldETA) > 5000) { // Sync if diff > 5s
             val mId = monitorId
             val jId = journeyId
             if ((mId != null) && (jId != null)) {
@@ -237,7 +239,16 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
 
     override fun onStart() {
         super.onStart()
-        registerReceiver(batteryReceiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                registerReceiver(batteryReceiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED), Context.RECEIVER_EXPORTED)
+            } else {
+                @Suppress("DEPRECATION")
+                registerReceiver(batteryReceiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+            }
+        } catch (e: Exception) {
+            android.util.Log.w("TravelerActivity", "Failed to register battery receiver", e)
+        }
         startLocationUpdates()
     }
 
@@ -258,9 +269,27 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
 
     override fun onDestroy() {
         binding.root.removeCallbacks(timerRunnable)
+        
+        // Remove approval listener to prevent memory leaks
+        if (approvalListener != null) {
+            try {
+                database.child("users").child(currentUid).child("approval_response").removeEventListener(approvalListener!!)
+            } catch (e: Exception) {
+                android.util.Log.w("TravelerActivity", "Failed to remove approval listener", e)
+            }
+            approvalListener = null
+        }
+        
+        // Unregister battery receiver with proper exception handling
         try {
             unregisterReceiver(batteryReceiver)
-        } catch (_: Exception) {}
+        } catch (e: IllegalArgumentException) {
+            // Receiver wasn't registered, safe to ignore
+            android.util.Log.d("TravelerActivity", "Battery receiver not registered", e)
+        } catch (e: Exception) {
+            android.util.Log.w("TravelerActivity", "Failed to unregister battery receiver", e)
+        }
+        
         super.onDestroy()
     }
 
@@ -347,27 +376,26 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
     private fun searchLocation(query: String) {
         if (query.isEmpty()) return
         val geocoder = Geocoder(this)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            Thread {
-                geocoder.getFromLocationName(query, 1) { addresses ->
-                    runOnUiThread {
-                        if (addresses.isNotEmpty()) {
-                            val address = addresses[0]
-                            val latLng = LatLng(address.latitude, address.longitude)
-                            googleMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 15f))
-                            selectedDestination = latLng
-                            updateDestinationMarker(latLng)
-                            updateETA()
-                        } else {
-                            Toast.makeText(this, "Location not found", Toast.LENGTH_SHORT).show()
+        
+        Thread {
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    geocoder.getFromLocationName(query, 1) { addresses ->
+                        runOnUiThread {
+                            if (addresses.isNotEmpty()) {
+                                val address = addresses[0]
+                                val latLng = LatLng(address.latitude, address.longitude)
+                                googleMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 15f))
+                                selectedDestination = latLng
+                                updateDestinationMarker(latLng)
+                                updateETA()
+                            } else {
+                                Toast.makeText(this, "Location not found", Toast.LENGTH_SHORT).show()
+                            }
                         }
                     }
-                }
-            }.start()
-        } else {
-            @Suppress("DEPRECATION")
-            Thread {
-                try {
+                } else {
+                    @Suppress("DEPRECATION")
                     val addresses = geocoder.getFromLocationName(query, 1)
                     runOnUiThread {
                         if (addresses.isNullOrEmpty().not()) {
@@ -381,13 +409,19 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
                             Toast.makeText(this, "Location not found", Toast.LENGTH_SHORT).show()
                         }
                     }
-                } catch (e: IOException) {
-                    runOnUiThread {
-                        Toast.makeText(this, "Search error: ${e.message}", Toast.LENGTH_SHORT).show()
-                    }
                 }
-            }.start()
-        }
+            } catch (e: IOException) {
+                runOnUiThread {
+                    Toast.makeText(this, "Geocoding service error: ${e.message}", Toast.LENGTH_SHORT).show()
+                    android.util.Log.e("TravelerActivity", "Geocoding error", e)
+                }
+            } catch (e: Exception) {
+                runOnUiThread {
+                    Toast.makeText(this, "Search error: ${e.message}", Toast.LENGTH_SHORT).show()
+                    android.util.Log.e("TravelerActivity", "Unexpected search error", e)
+                }
+            }
+        }.start()
     }
 
     private fun setupImmersiveMode() {
@@ -527,6 +561,12 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
             Toast.makeText(this, "Please enter a monitor ID", Toast.LENGTH_SHORT).show()
             return
         }
+        
+        // Fix #9: Validate that monitor ID is numeric
+        if (!monitorNumericId.matches(Regex("^\\d+$"))) {
+            Toast.makeText(this, "Monitor ID must be numeric", Toast.LENGTH_SHORT).show()
+            return
+        }
 
         database.child("id_to_uid").child(monitorNumericId).get().addOnSuccessListener { snapshot ->
             val monitorUid = snapshot.getValue(String::class.java)
@@ -538,7 +578,7 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
             val id = UUID.randomUUID().toString()
             journeyId = id
 
-                    database.child("users").child(currentUid).child("name").get().addOnSuccessListener { nameSnapshot ->
+            database.child("users").child(currentUid).child("name").get().addOnSuccessListener { nameSnapshot ->
                 val myName = nameSnapshot.getValue(String::class.java) ?: "Traveler"
                 val request = MonitoringRequest(currentUid, myName, id, "pending")
                 database.child("monitoring_requests").child(monitorUid).child(id).setValue(request)
@@ -554,34 +594,53 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
     private fun listenForApproval(monitorUid: String, journeyIdForRequest: String) {
+        // Fix #2: Store reference and remove old listeners
+        approvalListener?.let {
+            try {
+                database.child("users").child(currentUid).child("approval_response").removeEventListener(it)
+            } catch (e: Exception) {
+                android.util.Log.d("TravelerActivity", "Could not remove old approval listener", e)
+            }
+        }
+        
         // Listen on a private secure node specific to this traveler and journey
-        database.child("users").child(currentUid).child("approval_response").child(journeyIdForRequest)
-            .addValueEventListener(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    val status = snapshot.child("status").getValue(String::class.java)
-                    val confirmedMonitorId = snapshot.child("monitorId").getValue(String::class.java)
-                    val confirmedJourneyId = snapshot.child("journeyId").getValue(String::class.java)
-                    
-                    if (status == "accepted" && !isJourneyActive) {
-                        // Ensure we use the correct journeyId if it was changed or reassigned
-                        confirmedJourneyId?.let { journeyId = it }
+        approvalListener = object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val status = snapshot.child("status").getValue(String::class.java)
+                val confirmedMonitorId = snapshot.child("monitorId").getValue(String::class.java)
+                val confirmedJourneyId = snapshot.child("journeyId").getValue(String::class.java)
+                
+                if (status == "accepted" && !isJourneyActive) {
+                    // Ensure we use the correct journeyId if it was changed or reassigned
+                    confirmedJourneyId?.let { journeyId = it }
 
-                        // Clear the approval node to reset state
-                        snapshot.ref.removeValue()
-                        startJourney(confirmedMonitorId ?: monitorUid)
-                    } else if (status == "rejected") {
-                        snapshot.ref.removeValue()
-                        binding.selectionLayout.visibility = View.VISIBLE
-                        binding.waitingLayout.visibility = View.GONE
-                        Toast.makeText(this@TravelerActivity, "Request rejected", Toast.LENGTH_SHORT).show()
-                    }
+                    // Clear the approval node to reset state
+                    snapshot.ref.removeValue()
+                    startJourney(confirmedMonitorId ?: monitorUid)
+                } else if (status == "rejected") {
+                    snapshot.ref.removeValue()
+                    binding.selectionLayout.visibility = View.VISIBLE
+                    binding.waitingLayout.visibility = View.GONE
+                    Toast.makeText(this@TravelerActivity, "Request rejected", Toast.LENGTH_SHORT).show()
                 }
-                override fun onCancelled(error: DatabaseError) {}
-            })
+            }
+            override fun onCancelled(error: DatabaseError) {}
+        }
+        
+        database.child("users").child(currentUid).child("approval_response").child(journeyIdForRequest)
+            .addValueEventListener(approvalListener!!)
     }
 
     private fun startJourney(monitorUid: String) {
         val id = journeyId ?: return
+        
+        // Fix #4: Add null check for selectedDestination
+        val dest = selectedDestination
+        if (dest == null) {
+            Toast.makeText(this, "No destination selected", Toast.LENGTH_SHORT).show()
+            return
+        }
+        
         monitorId = monitorUid
         isJourneyActive = true
         journeyStartTime = System.currentTimeMillis()
@@ -605,7 +664,7 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
 
         val journey = Journey(
             id = id,
-            destination = MyLatLng(selectedDestination!!.latitude, selectedDestination!!.longitude),
+            destination = MyLatLng(dest.latitude, dest.longitude),
             startTime = journeyStartTime,
             estimatedArrivalTime = estimatedArrivalTime,
             isActive = true,

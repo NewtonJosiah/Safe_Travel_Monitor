@@ -20,6 +20,7 @@ class MainActivity : AppCompatActivity() {
     private val auth = FirebaseAuth.getInstance()
     private val database = FirebaseDatabase.getInstance().reference
     private val permissionRequestCode = 123
+    private var requestDialog: androidx.appcompat.app.AlertDialog? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -67,10 +68,12 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
+                    // Only handle pending status, skip duplicates from status updates
                     val request = snapshot.getValue(MonitoringRequest::class.java) ?: return
                     val journeyId = snapshot.key ?: return
                     val reqWithId = request.copy(journeyId = journeyId)
-                    if (reqWithId.status == "pending") {
+                    // Avoid duplicate dialogs - only show if still pending and dialog not already shown
+                    if (reqWithId.status == "pending" && requestDialog == null) {
                         showMonitoringRequestDialog(reqWithId)
                     }
                 }
@@ -82,7 +85,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showMonitoringRequestDialog(request: MonitoringRequest) {
-        androidx.appcompat.app.AlertDialog.Builder(this)
+        // Prevent duplicate dialogs
+        if (requestDialog?.isShowing == true) return
+        
+        requestDialog = androidx.appcompat.app.AlertDialog.Builder(this)
             .setTitle("Monitoring Request")
             .setMessage("${request.travelerName} wants you to monitor their journey. Accept?")
             .setCancelable(false)
@@ -92,14 +98,15 @@ class MainActivity : AppCompatActivity() {
                 // 1. Update global request node
                 database.child("monitoring_requests").child(myUid).child(request.journeyId).child("status").setValue("accepted")
                 
-                // 2. Notify traveler specifically in their private node to bypass permission issues
-                database.child("users").child(request.travelerId).child("active_monitoring_approval")
+                // 2. Notify traveler on their private secure node - use consistent path with TravelerActivity and MonitorActivity
+                database.child("users").child(request.travelerId).child("approval_response").child(request.journeyId)
                     .setValue(mapOf(
                         "status" to "accepted",
                         "monitorId" to myUid,
                         "journeyId" to request.journeyId
                     ))
                 
+                requestDialog = null
                 // Navigate to Monitor screen
                 startActivity(Intent(this, MonitorActivity::class.java))
             }
@@ -107,9 +114,13 @@ class MainActivity : AppCompatActivity() {
                 val myUid = auth.currentUser?.uid ?: return@setNegativeButton
                 database.child("monitoring_requests").child(myUid).child(request.journeyId).child("status").setValue("rejected")
                 
-                database.child("users").child(request.travelerId).child("active_monitoring_approval")
+                // Use consistent path with MonitorActivity
+                database.child("users").child(request.travelerId).child("approval_response").child(request.journeyId)
                     .setValue(mapOf("status" to "rejected"))
+                
+                requestDialog = null
             }
+            .setOnDismissListener { requestDialog = null }
             .show()
     }
 
