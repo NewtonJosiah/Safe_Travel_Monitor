@@ -188,8 +188,8 @@ class MonitorActivity : AppCompatActivity(), OnMapReadyCallback {
             .setPositiveButton("Accept") { _, _ ->
                 database.child("monitoring_requests").child(currentUid).child(request.journeyId).child("status").setValue("accepted")
                 
-                // Notify traveler specifically in their private node to bypass permission issues
-                database.child("users").child(request.travelerId).child("active_monitoring_approval")
+                // Notify traveler in their private secure node to bypass permission issues
+                database.child("users").child(request.travelerId).child("approval_response").child(request.journeyId)
                     .setValue(mapOf(
                         "status" to "accepted",
                         "monitorId" to currentUid,
@@ -201,7 +201,7 @@ class MonitorActivity : AppCompatActivity(), OnMapReadyCallback {
             .setNegativeButton("Reject") { _, _ ->
                 database.child("monitoring_requests").child(currentUid).child(request.journeyId).child("status").setValue("rejected")
                 
-                database.child("users").child(request.travelerId).child("active_monitoring_approval")
+                database.child("users").child(request.travelerId).child("approval_response").child(request.journeyId)
                     .setValue(mapOf("status" to "rejected"))
             }
             .show()
@@ -236,6 +236,12 @@ class MonitorActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
     private fun startMonitoring(monitorId: String, journey: Journey) {
+        if (isMonitoring && (monitoredJourneyId == journey.id)) return // Already setup for this journey
+        
+        // Clean previous listeners if switching journeys (though usually one at a time)
+        removeMonitoredListeners()
+        
+        // Initialize journey data immediately from the journey object
         estimatedArrivalTime = journey.estimatedArrivalTime
         updateDestinationMarker(LatLng(journey.destination.latitude, journey.destination.longitude))
         
@@ -244,13 +250,23 @@ class MonitorActivity : AppCompatActivity(), OnMapReadyCallback {
         binding.statusCard.visibility = View.VISIBLE
         binding.idInputCard.visibility = View.GONE
 
-        if (isMonitoring && (monitoredJourneyId == journey.id)) return // Already setup for this journey
-        
-        // Clean previous listeners if switching journeys (though usually one at a time)
-        removeMonitoredListeners()
         monitoredJourneyId = journey.id
         isMonitoring = true
         startCountdownTimer()
+        
+        // Fetch the initial location snapshot to populate immediately instead of waiting for listener
+        database.child("monitor_locations").child(monitorId).child(journey.id).get().addOnSuccessListener { snapshot ->
+            val lat = snapshot.child("latitude").getValue(Double::class.java) ?: -1.0
+            val lng = snapshot.child("longitude").getValue(Double::class.java) ?: -1.0
+            
+            if ((lat != -1.0) && (lng != -1.0)) {
+                val current = LatLng(lat, lng)
+                updateTravelerMarker(current)
+                lastLocation = current
+                // First location fix - zoom in
+                googleMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(current, 15f))
+            }
+        }
         
         activeLocationListener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
