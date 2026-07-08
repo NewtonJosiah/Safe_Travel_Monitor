@@ -35,9 +35,20 @@ class SignupActivity : AppCompatActivity() {
         val email = binding.etEmail.text.toString().trim()
         val phone = binding.etPhone.text.toString().trim()
         val password = binding.etPassword.text.toString().trim()
+        val confirmPassword = binding.etConfirmPassword.text.toString().trim()
 
-        if (name.isEmpty() || email.isEmpty() || phone.isEmpty() || password.isEmpty()) {
+        if (name.isEmpty() || email.isEmpty() || phone.isEmpty() || password.isEmpty() || confirmPassword.isEmpty()) {
             Toast.makeText(this, "Please fill all fields", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        if (password != confirmPassword) {
+            Toast.makeText(this, "Passwords do not match", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        if (!isPasswordValid(password)) {
+            Toast.makeText(this, "Password must be at least 8 characters, include a capital letter, a number, and a symbol", Toast.LENGTH_LONG).show()
             return
         }
 
@@ -77,5 +88,13 @@ class SignupActivity : AppCompatActivity() {
                     Toast.makeText(this, "Signup failed ($errorCode): $errorMessage", Toast.LENGTH_LONG).show()
                 }
             }
+    }
+
+    private fun isPasswordValid(password: String): Boolean {
+        if (password.length < 8) return false
+        val hasUpperCase = password.any { it.isUpperCase() }
+        val hasDigit = password.any { it.isDigit() }
+        val hasSymbol = password.any { !it.isLetterOrDigit() }
+        return hasUpperCase && hasDigit && hasSymbol
     }
 }

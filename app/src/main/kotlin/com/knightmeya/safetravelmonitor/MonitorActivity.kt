@@ -189,7 +189,12 @@ class MonitorActivity : AppCompatActivity(), OnMapReadyCallback {
             }
             override fun onChildRemoved(snapshot: DataSnapshot) {}
             override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {}
-            override fun onCancelled(error: DatabaseError) {}
+            override fun onCancelled(error: DatabaseError) {
+                if (error.code == DatabaseError.PERMISSION_DENIED) {
+                    Log.e("MonitorActivity", "Permission denied for monitoring_requests. Check security rules.")
+                    database.child("monitoring_requests").child(currentUid).removeEventListener(this)
+                }
+            }
         }
         
         database.child("monitoring_requests").child(currentUid)
@@ -234,7 +239,12 @@ class MonitorActivity : AppCompatActivity(), OnMapReadyCallback {
                             if (it.isActive) startMonitoring(currentUid, it) else stopMonitoring()
                         }
                     }
-                    override fun onCancelled(error: DatabaseError) {}
+                    override fun onCancelled(error: DatabaseError) {
+                if (error.code == DatabaseError.PERMISSION_DENIED) {
+                    Log.e("MonitorActivity", "Permission denied for monitoring_requests. Check security rules.")
+                    database.child("monitoring_requests").child(currentUid).removeEventListener(this)
+                }
+            }
                 },
             )
     }
@@ -314,7 +324,12 @@ class MonitorActivity : AppCompatActivity(), OnMapReadyCallback {
                     lastLocation = current
                 }
             }
-            override fun onCancelled(error: DatabaseError) {}
+            override fun onCancelled(error: DatabaseError) {
+                if (error.code == DatabaseError.PERMISSION_DENIED) {
+                    Log.e("MonitorActivity", "Permission denied for monitoring_requests. Check security rules.")
+                    database.child("monitoring_requests").child(currentUid).removeEventListener(this)
+                }
+            }
         }
         database.child("monitor_locations").child(monitorId).child(journey.id).addValueEventListener(activeLocationListener!!)
 
@@ -325,7 +340,12 @@ class MonitorActivity : AppCompatActivity(), OnMapReadyCallback {
                 estimatedArrivalTime = newETA
             }
 
-            override fun onCancelled(error: DatabaseError) {}
+            override fun onCancelled(error: DatabaseError) {
+                if (error.code == DatabaseError.PERMISSION_DENIED) {
+                    Log.e("MonitorActivity", "Permission denied for monitoring_requests. Check security rules.")
+                    database.child("monitoring_requests").child(currentUid).removeEventListener(this)
+                }
+            }
         }
         database.child("monitor_journeys").child(monitorId).child(journey.id).child("estimatedArrivalTime")
             .addValueEventListener(etaListener!!)
@@ -341,7 +361,12 @@ class MonitorActivity : AppCompatActivity(), OnMapReadyCallback {
             override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {}
             override fun onChildRemoved(snapshot: DataSnapshot) {}
             override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {}
-            override fun onCancelled(error: DatabaseError) {}
+            override fun onCancelled(error: DatabaseError) {
+                if (error.code == DatabaseError.PERMISSION_DENIED) {
+                    Log.e("MonitorActivity", "Permission denied for monitoring_requests. Check security rules.")
+                    database.child("monitoring_requests").child(currentUid).removeEventListener(this)
+                }
+            }
         }
         database.child("notifications").child(monitorId).child(journey.id).addChildEventListener(activeNotificationListener!!)
 

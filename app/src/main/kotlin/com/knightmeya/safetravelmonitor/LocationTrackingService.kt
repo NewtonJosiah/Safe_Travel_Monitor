@@ -6,6 +6,7 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
 import android.os.Looper
@@ -40,14 +41,15 @@ class LocationTrackingService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        // Fix #8 & #10: Validate journey data before starting service
+        // Fix #12: Always call startForeground first to avoid ANR/Crash on Android 12+
+        startForegroundService()
+
         if (journeyId.isNullOrEmpty() || monitorId.isNullOrEmpty()) {
             Log.w("LocationTrackingService", "No active journey - stopping service")
             stopSelf()
             return START_NOT_STICKY
         }
         
-        startForegroundService()
         startLocationUpdates()
         return START_STICKY
     }
@@ -68,7 +70,11 @@ class LocationTrackingService : Service() {
             .setContentIntent(pendingIntent)
             .build()
 
-        startForeground(notificationId, notification)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            startForeground(notificationId, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION)
+        } else {
+            startForeground(notificationId, notification)
+        }
     }
 
     private fun startLocationUpdates() {

@@ -73,6 +73,7 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var locationCallback: LocationCallback
     private var approvalListener: ValueEventListener? = null
+    private var approvalRef: DatabaseReference? = null
 
     private val timerRunnable = object : Runnable {
         override fun run() {
@@ -241,7 +242,7 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
         super.onStart()
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                registerReceiver(batteryReceiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED), Context.RECEIVER_EXPORTED)
+                registerReceiver(batteryReceiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED), RECEIVER_EXPORTED)
             } else {
                 @Suppress("DEPRECATION")
                 registerReceiver(batteryReceiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
@@ -271,13 +272,14 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
         binding.root.removeCallbacks(timerRunnable)
         
         // Remove approval listener to prevent memory leaks
-        if (approvalListener != null) {
+        approvalListener?.let { listener ->
             try {
-                database.child("users").child(currentUid).child("approval_response").removeEventListener(approvalListener!!)
+                approvalRef?.removeEventListener(listener)
             } catch (e: Exception) {
                 android.util.Log.w("TravelerActivity", "Failed to remove approval listener", e)
             }
             approvalListener = null
+            approvalRef = null
         }
         
         // Unregister battery receiver with proper exception handling
@@ -587,6 +589,10 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
                         binding.waitingLayout.visibility = View.VISIBLE
                         listenForApproval(monitorUid, id)
                     }
+                    .addOnFailureListener { e ->
+                        Toast.makeText(this, "Failed to send request: ${e.message}", Toast.LENGTH_LONG).show()
+                        android.util.Log.e("TravelerActivity", "Firebase write failed", e)
+                    }
             }
         }.addOnFailureListener {
             Toast.makeText(this, "Error looking up monitor", Toast.LENGTH_SHORT).show()
@@ -595,15 +601,16 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
 
     private fun listenForApproval(monitorUid: String, journeyIdForRequest: String) {
         // Fix #2: Store reference and remove old listeners
-        approvalListener?.let {
+        approvalListener?.let { listener ->
             try {
-                database.child("users").child(currentUid).child("approval_response").removeEventListener(it)
+                approvalRef?.removeEventListener(listener)
             } catch (e: Exception) {
                 android.util.Log.d("TravelerActivity", "Could not remove old approval listener", e)
             }
         }
         
         // Listen on a private secure node specific to this traveler and journey
+        approvalRef = database.child("users").child(currentUid).child("approval_response").child(journeyIdForRequest)
         approvalListener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 val status = snapshot.child("status").getValue(String::class.java)
@@ -624,11 +631,12 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
                     Toast.makeText(this@TravelerActivity, "Request rejected", Toast.LENGTH_SHORT).show()
                 }
             }
-            override fun onCancelled(error: DatabaseError) {}
+            override fun onCancelled(error: DatabaseError) {
+                android.util.Log.e("TravelerActivity", "Approval listener cancelled: ${error.message}")
+            }
         }
         
-        database.child("users").child(currentUid).child("approval_response").child(journeyIdForRequest)
-            .addValueEventListener(approvalListener!!)
+        approvalRef?.addValueEventListener(approvalListener!!)
     }
 
     private fun startJourney(monitorUid: String) {
@@ -654,12 +662,12 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
         binding.searchCard.visibility = View.GONE
         binding.headerTelemetryLayout.visibility = View.VISIBLE
 
-        // Use commit() to ensure IDs are available for the service immediately
+        // Use apply() for asynchronous disk write to avoid blocking UI thread (Fix #11)
         getSharedPreferences("SafeTravelPrefs", MODE_PRIVATE).edit().apply {
             putString("active_journey_id", id)
             putString("monitor_id", monitorUid)
             putString("traveler_uid", currentUid)
-            commit()
+            apply()
         }
 
         val journey = Journey(

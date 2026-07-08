@@ -28,6 +28,7 @@ class LoginActivity : AppCompatActivity() {
 
         binding.tvSignupLink.setOnClickListener {
             startActivity(Intent(this, SignupActivity::class.java))
+            finish()
         }
     }
 

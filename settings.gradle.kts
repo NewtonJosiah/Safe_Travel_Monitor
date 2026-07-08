@@ -16,7 +16,7 @@ dependencyResolutionManagement {
         // Fix #9: Use relative path instead of hard-coded Windows path
         // This works for developers on any machine
         maven {
-            val flutterModuleRoot = rootProject.projectDir.parentFile
+            val flutterModuleRoot = rootProject.projectDir
             url = uri("$flutterModuleRoot/flutter_module/build/host/outputs/repo")
         }
         maven {

@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -79,7 +80,13 @@ class MainActivity : AppCompatActivity() {
                 }
                 override fun onChildRemoved(snapshot: DataSnapshot) {}
                 override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {}
-                override fun onCancelled(error: DatabaseError) {}
+                override fun onCancelled(error: DatabaseError) {
+                    if (error.code == DatabaseError.PERMISSION_DENIED) {
+                        Log.e("MainActivity", "Permission denied for monitoring_requests. Check security rules.")
+                        // Optionally stop listening to prevent loop if it keeps failing
+                        database.child("monitoring_requests").child(myUid).removeEventListener(this)
+                    }
+                }
             },
         )
     }
