@@ -3,6 +3,7 @@ package com.knightmeya.safetravelmonitor
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
@@ -40,6 +41,8 @@ class MonitorActivity : AppCompatActivity(), OnMapReadyCallback {
     
     private var activeLocationListener: ValueEventListener? = null
     private var activeNotificationListener: ChildEventListener? = null
+    private var monitoringRequestsListener: ChildEventListener? = null
+    private var etaListener: ValueEventListener? = null
     private var monitoredJourneyId: String? = null
 
     private val auth = FirebaseAuth.getInstance()
@@ -89,6 +92,18 @@ class MonitorActivity : AppCompatActivity(), OnMapReadyCallback {
     override fun onDestroy() {
         handler.removeCallbacks(countdownRunnable)
         removeMonitoredListeners()
+        
+        // Fix #11: Remove monitoring requests listener to prevent memory leaks
+        if (monitoringRequestsListener != null) {
+            try {
+                database.child("monitoring_requests").child(currentUid)
+                    .removeEventListener(monitoringRequestsListener!!)
+                monitoringRequestsListener = null
+            } catch (e: Exception) {
+                Log.w("MonitorActivity", "Failed to remove monitoring requests listener", e)
+            }
+        }
+        
         super.onDestroy()
     }
 
@@ -150,34 +165,35 @@ class MonitorActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
     private fun listenForMonitoringRequests() {
+        // Fix #11: Store listener reference for proper cleanup in onDestroy
+        monitoringRequestsListener = object : ChildEventListener {
+            override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
+                val request = snapshot.getValue(MonitoringRequest::class.java) ?: return
+                val key = snapshot.key ?: ""
+                // Ensure journeyId is set correctly from the node key
+                val reqWithId = request.copy(journeyId = key)
+                
+                when (reqWithId.status) {
+                    "pending" -> showRequestDialog(reqWithId)
+                    "accepted" -> {
+                        binding.statusCard.visibility = View.VISIBLE
+                        listenForJourney(reqWithId.journeyId)
+                    }
+                }
+            }
+            override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
+                val request = snapshot.getValue(MonitoringRequest::class.java) ?: return
+                val key = snapshot.key ?: ""
+                val reqWithId = request.copy(journeyId = key)
+                if (reqWithId.status == "pending") showRequestDialog(reqWithId)
+            }
+            override fun onChildRemoved(snapshot: DataSnapshot) {}
+            override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {}
+            override fun onCancelled(error: DatabaseError) {}
+        }
+        
         database.child("monitoring_requests").child(currentUid)
-            .addChildEventListener(
-                object : ChildEventListener {
-                    override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
-                        val request = snapshot.getValue(MonitoringRequest::class.java) ?: return
-                        val key = snapshot.key ?: ""
-                        // Ensure journeyId is set correctly from the node key
-                        val reqWithId = request.copy(journeyId = key)
-                        
-                        when (reqWithId.status) {
-                            "pending" -> showRequestDialog(reqWithId)
-                            "accepted" -> {
-                                binding.statusCard.visibility = View.VISIBLE
-                                listenForJourney(reqWithId.journeyId)
-                            }
-                        }
-                    }
-                    override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
-                        val request = snapshot.getValue(MonitoringRequest::class.java) ?: return
-                        val key = snapshot.key ?: ""
-                        val reqWithId = request.copy(journeyId = key)
-                        if (reqWithId.status == "pending") showRequestDialog(reqWithId)
-                    }
-                    override fun onChildRemoved(snapshot: DataSnapshot) {}
-                    override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {}
-                    override fun onCancelled(error: DatabaseError) {}
-                },
-            )
+            .addChildEventListener(monitoringRequestsListener!!)
     }
 
     private fun showRequestDialog(request: MonitoringRequest) {
@@ -231,8 +247,20 @@ class MonitorActivity : AppCompatActivity(), OnMapReadyCallback {
         activeNotificationListener?.let {
             database.child("notifications").child(currentUid).child(jId).removeEventListener(it)
         }
+        
+        // Fix #13: Remove ETA listener separately
+        etaListener?.let {
+            try {
+                database.child("monitor_journeys").child(currentUid).child(jId).child("estimatedArrivalTime")
+                    .removeEventListener(it)
+            } catch (e: Exception) {
+                Log.d("MonitorActivity", "Could not remove ETA listener", e)
+            }
+        }
+        
         activeLocationListener = null
         activeNotificationListener = null
+        etaListener = null
     }
 
     private fun startMonitoring(monitorId: String, journey: Journey) {
@@ -290,18 +318,17 @@ class MonitorActivity : AppCompatActivity(), OnMapReadyCallback {
         }
         database.child("monitor_locations").child(monitorId).child(journey.id).addValueEventListener(activeLocationListener!!)
 
-        // Listen for ETA updates from Traveler
-        database.child("monitor_journeys").child(monitorId).child(journey.id).child("estimatedArrivalTime")
-            .addValueEventListener(
-                object : ValueEventListener {
-                    override fun onDataChange(snapshot: DataSnapshot) {
-                        val newETA = snapshot.getValue(Long::class.java) ?: return
-                        estimatedArrivalTime = newETA
-                    }
+        // Fix #13: Listen for ETA updates from Traveler with tracked listener
+        etaListener = object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val newETA = snapshot.getValue(Long::class.java) ?: return
+                estimatedArrivalTime = newETA
+            }
 
-                    override fun onCancelled(error: DatabaseError) {}
-                },
-            )
+            override fun onCancelled(error: DatabaseError) {}
+        }
+        database.child("monitor_journeys").child(monitorId).child(journey.id).child("estimatedArrivalTime")
+            .addValueEventListener(etaListener!!)
 
         activeNotificationListener = object : ChildEventListener {
             override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
