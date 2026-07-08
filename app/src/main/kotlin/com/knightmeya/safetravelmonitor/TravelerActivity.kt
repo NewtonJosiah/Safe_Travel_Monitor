@@ -545,7 +545,7 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
                     .addOnSuccessListener {
                         binding.selectionLayout.visibility = View.GONE
                         binding.waitingLayout.visibility = View.VISIBLE
-                        listenForApproval(monitorUid)
+                        listenForApproval(monitorUid, id)
                     }
             }
         }.addOnFailureListener {
@@ -553,8 +553,9 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
         }
     }
 
-    private fun listenForApproval(monitorUid: String) {
-        database.child("users").child(currentUid).child("active_monitoring_approval")
+    private fun listenForApproval(monitorUid: String, journeyIdForRequest: String) {
+        // Listen on a private secure node specific to this traveler and journey
+        database.child("users").child(currentUid).child("approval_response").child(journeyIdForRequest)
             .addValueEventListener(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     val status = snapshot.child("status").getValue(String::class.java)
