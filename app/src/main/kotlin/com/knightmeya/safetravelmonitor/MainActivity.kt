@@ -27,8 +27,8 @@ class MainActivity : AppCompatActivity() {
         
         val currentUser = auth.currentUser
         if (currentUser == null) {
-            // Should not happen as WelcomeActivity is the entry point
-            startActivity(Intent(this, WelcomeActivity::class.java))
+            // Should not happen as SplashActivity is the entry point
+            startActivity(Intent(this, SplashActivity::class.java))
             finish()
             return
         }
@@ -148,7 +148,7 @@ class MainActivity : AppCompatActivity() {
 
         binding.btnLogout.setOnClickListener {
             auth.signOut()
-            startActivity(Intent(this, WelcomeActivity::class.java))
+            startActivity(Intent(this, SplashActivity::class.java))
             finish()
         }
     }
