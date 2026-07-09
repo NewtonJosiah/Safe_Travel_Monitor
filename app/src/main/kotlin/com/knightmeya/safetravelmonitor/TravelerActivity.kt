@@ -11,6 +11,7 @@ import android.location.Location
 import android.os.BatteryManager
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import android.os.Looper
 import android.view.KeyEvent
 import android.view.View
@@ -21,6 +22,7 @@ import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
+import androidx.core.content.edit
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -225,7 +227,8 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
         Toast.makeText(this, "You have arrived!", Toast.LENGTH_LONG).show()
 
         val mId = monitorId
-        if ((mId != null) && (journeyId != null)) {
+        val jId = journeyId
+        if ((mId != null) && (jId != null)) {
             val notification = Notification(
                 id = UUID.randomUUID().toString(),
                 title = "✅ Arrived",
@@ -233,9 +236,21 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
                 timestamp = System.currentTimeMillis(),
                 type = "SAFE_ARRIVAL",
             )
-            database.child("notifications").child(mId).child(journeyId!!).push().setValue(notification)
-            database.child("monitor_journeys").child(mId).child(journeyId!!).child("isActive").setValue(false)
+            database.child("notifications").child(mId).child(jId).push().setValue(notification)
+            database.child("monitor_journeys").child(mId).child(jId).child("isActive").setValue(false)
+            // Cleanup monitoring request
+            database.child("monitoring_requests").child(mId).child(jId).removeValue()
         }
+
+        getSharedPreferences("SafeTravelPrefs", MODE_PRIVATE).edit { clear() }
+
+        // Return UI to selection state
+        binding.activeLayout.visibility = View.GONE
+        binding.selectionLayout.visibility = View.VISIBLE
+        binding.searchCard.visibility = View.VISIBLE
+        binding.headerTelemetryLayout.visibility = View.GONE
+        
+        stopService(Intent(this, LocationTrackingService::class.java))
     }
 
     override fun onStart() {
@@ -248,7 +263,7 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
                 registerReceiver(batteryReceiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
             }
         } catch (e: Exception) {
-            android.util.Log.w("TravelerActivity", "Failed to register battery receiver", e)
+            Log.w("TravelerActivity", "Failed to register battery receiver", e)
         }
         startLocationUpdates()
     }
@@ -276,7 +291,7 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
             try {
                 approvalRef?.removeEventListener(listener)
             } catch (e: Exception) {
-                android.util.Log.w("TravelerActivity", "Failed to remove approval listener", e)
+                Log.w("TravelerActivity", "Failed to remove approval listener", e)
             }
             approvalListener = null
             approvalRef = null
@@ -287,9 +302,9 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
             unregisterReceiver(batteryReceiver)
         } catch (e: IllegalArgumentException) {
             // Receiver wasn't registered, safe to ignore
-            android.util.Log.d("TravelerActivity", "Battery receiver not registered", e)
+            Log.d("TravelerActivity", "Battery receiver not registered", e)
         } catch (e: Exception) {
-            android.util.Log.w("TravelerActivity", "Failed to unregister battery receiver", e)
+            Log.w("TravelerActivity", "Failed to unregister battery receiver", e)
         }
         
         super.onDestroy()
@@ -362,6 +377,24 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
         
         binding.btnMaximize.setOnClickListener { toggleMapMaximize() }
 
+        // Set up location autocomplete
+        val adapter = LocationAutocompleteAdapter(this)
+        binding.etSearchLocation.setAdapter(adapter)
+        
+        binding.etSearchLocation.setOnItemClickListener { parent, _, position, _ ->
+            val address = parent.getItemAtPosition(position) as? android.location.Address
+            if (address != null) {
+                val latLng = LatLng(address.latitude, address.longitude)
+                googleMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 15f))
+                selectedDestination = latLng
+                updateDestinationMarker(latLng)
+                updateETA()
+                
+                val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+                imm.hideSoftInputFromWindow(binding.etSearchLocation.windowToken, 0)
+            }
+        }
+
         binding.etSearchLocation.setOnEditorActionListener { v, actionId, event ->
             if (actionId == EditorInfo.IME_ACTION_SEARCH || 
                 (event != null && event.keyCode == KeyEvent.KEYCODE_ENTER)) {
@@ -415,12 +448,12 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
             } catch (e: IOException) {
                 runOnUiThread {
                     Toast.makeText(this, "Geocoding service error: ${e.message}", Toast.LENGTH_SHORT).show()
-                    android.util.Log.e("TravelerActivity", "Geocoding error", e)
+                    Log.e("TravelerActivity", "Geocoding error", e)
                 }
             } catch (e: Exception) {
                 runOnUiThread {
                     Toast.makeText(this, "Search error: ${e.message}", Toast.LENGTH_SHORT).show()
-                    android.util.Log.e("TravelerActivity", "Unexpected search error", e)
+                    Log.e("TravelerActivity", "Unexpected search error", e)
                 }
             }
         }.start()
@@ -591,21 +624,27 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
                     }
                     .addOnFailureListener { e ->
                         Toast.makeText(this, "Failed to send request: ${e.message}", Toast.LENGTH_LONG).show()
-                        android.util.Log.e("TravelerActivity", "Firebase write failed", e)
+                        Log.e("TravelerActivity", "Firebase write failed", e)
                     }
             }
-        }.addOnFailureListener {
-            Toast.makeText(this, "Error looking up monitor", Toast.LENGTH_SHORT).show()
+        }.addOnFailureListener { e ->
+            Log.e("TravelerActivity", "Error looking up monitor ID: $monitorNumericId", e)
+            val errorMsg = when {
+                e.message?.contains("permission", ignoreCase = true) == true -> 
+                    "Permission denied. Check Firebase rules for 'id_to_uid' node."
+                else -> e.message ?: "Unknown error"
+            }
+            Toast.makeText(this, "Error looking up monitor: $errorMsg", Toast.LENGTH_LONG).show()
         }
     }
 
     private fun listenForApproval(monitorUid: String, journeyIdForRequest: String) {
-        // Fix #2: Store reference and remove old listeners
+        // Fix  Store reference and remove old listeners
         approvalListener?.let { listener ->
             try {
                 approvalRef?.removeEventListener(listener)
             } catch (e: Exception) {
-                android.util.Log.d("TravelerActivity", "Could not remove old approval listener", e)
+                Log.d("TravelerActivity", "Could not remove old approval listener", e)
             }
         }
         
@@ -632,7 +671,7 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
                 }
             }
             override fun onCancelled(error: DatabaseError) {
-                android.util.Log.e("TravelerActivity", "Approval listener cancelled: ${error.message}")
+                Log.e("TravelerActivity", "Approval listener cancelled: ${error.message}")
             }
         }
         
@@ -642,7 +681,7 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
     private fun startJourney(monitorUid: String) {
         val id = journeyId ?: return
         
-        // Fix #4: Add null check for selectedDestination
+        // Add null check for selectedDestination
         val dest = selectedDestination
         if (dest == null) {
             Toast.makeText(this, "No destination selected", Toast.LENGTH_SHORT).show()
@@ -663,11 +702,10 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
         binding.headerTelemetryLayout.visibility = View.VISIBLE
 
         // Use apply() for asynchronous disk write to avoid blocking UI thread (Fix #11)
-        getSharedPreferences("SafeTravelPrefs", MODE_PRIVATE).edit().apply {
+        getSharedPreferences("SafeTravelPrefs", MODE_PRIVATE).edit {
             putString("active_journey_id", id)
             putString("monitor_id", monitorUid)
             putString("traveler_uid", currentUid)
-            apply()
         }
 
         val journey = Journey(
@@ -704,11 +742,27 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
         val mId = monitorId
         val jId = journeyId
         if ((mId != null) && (jId != null)) {
+            // Send termination notification first so monitor receives it before listener is detached
+            val notification = Notification(
+                id = UUID.randomUUID().toString(),
+                title = "🛑 Journey Terminated",
+                message = "Traveler has manually ended the journey tracking.",
+                timestamp = System.currentTimeMillis(),
+                type = "JOURNEY_TERMINATED",
+            )
+            database.child("notifications").child(mId).child(jId).push().setValue(notification)
+
             database.child("monitor_journeys").child(mId).child(jId).child("isActive").setValue(false)
+            // Cleanup monitoring request
+            database.child("monitoring_requests").child(mId).child(jId).removeValue()
         }
         isJourneyActive = false
         monitorId = null
+        journeyId = null
         stopService(Intent(this, LocationTrackingService::class.java))
+        
+        getSharedPreferences("SafeTravelPrefs", MODE_PRIVATE).edit { clear() }
+
         binding.searchCard.visibility = View.VISIBLE
         binding.headerTelemetryLayout.visibility = View.GONE
         binding.selectionLayout.visibility = View.VISIBLE

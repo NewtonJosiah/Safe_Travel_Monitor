@@ -2,6 +2,7 @@ package com.knightmeya.safetravelmonitor
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.firebase.auth.FirebaseAuth
@@ -67,15 +68,22 @@ class SignupActivity : AppCompatActivity() {
                         phone = phone,
                     )
 
-                    database.child("users").child(uid).setValue(user)
+                    val userMap = mapOf(
+                        "users/$uid" to user,
+                        "id_to_uid/$numericId" to uid,
+                    )
+
+                    database.updateChildren(userMap)
                         .addOnSuccessListener {
-                            database.child("id_to_uid").child(numericId).setValue(uid)
-                            
                             firebaseUser.sendEmailVerification().addOnCompleteListener {
                                 Toast.makeText(this, "Account created! Please verify your email.", Toast.LENGTH_LONG).show()
                                 startActivity(Intent(this, EmailVerificationActivity::class.java))
                                 finish()
                             }
+                        }
+                        .addOnFailureListener { e ->
+                            Log.e("SignupActivity", "Failed to save user data", e)
+                            Toast.makeText(this, "Failed to save profile: ${e.message}", Toast.LENGTH_LONG).show()
                         }
                 } else {
                     val exception = task.exception
@@ -83,7 +91,7 @@ class SignupActivity : AppCompatActivity() {
                     val errorCode = (exception as? com.google.firebase.auth.FirebaseAuthException)?.errorCode ?: "No Code"
                     
                     // Log the full stack trace for debugging
-                    android.util.Log.e("SignupError", "Full exception:", exception)
+                    Log.e("SignupError", "Full exception:", exception)
 
                     Toast.makeText(this, "Signup failed ($errorCode): $errorMessage", Toast.LENGTH_LONG).show()
                 }

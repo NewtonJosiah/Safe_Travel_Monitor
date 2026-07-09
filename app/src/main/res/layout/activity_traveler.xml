@@ -182,7 +182,7 @@
                                     android:src="@android:drawable/ic_menu_search"
                                     app:tint="#64748B"
                                     android:layout_marginStart="8dp" />
-                                <EditText
+                                <AutoCompleteTextView
                                     android:id="@+id/etSearchLocation"
                                     android:layout_width="0dp"
                                     android:layout_height="wrap_content"
@@ -193,6 +193,7 @@
                                     android:paddingVertical="8dp"
                                     android:imeOptions="actionSearch"
                                     android:inputType="text"
+                                    android:completionThreshold="3"
                                     android:textSize="14sp" />
                             </LinearLayout>
                         </androidx.cardview.widget.CardView>

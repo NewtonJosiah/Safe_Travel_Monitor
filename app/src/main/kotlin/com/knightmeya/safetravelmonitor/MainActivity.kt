@@ -74,7 +74,7 @@ class MainActivity : AppCompatActivity() {
                     val journeyId = snapshot.key ?: return
                     val reqWithId = request.copy(journeyId = journeyId)
                     // Avoid duplicate dialogs - only show if still pending and dialog not already shown
-                    if (reqWithId.status == "pending" && requestDialog == null) {
+                    if ((reqWithId.status == "pending") && (requestDialog == null)) {
                         showMonitoringRequestDialog(reqWithId)
                     }
                 }
@@ -107,11 +107,13 @@ class MainActivity : AppCompatActivity() {
                 
                 // 2. Notify traveler on their private secure node - use consistent path with TravelerActivity and MonitorActivity
                 database.child("users").child(request.travelerId).child("approval_response").child(request.journeyId)
-                    .setValue(mapOf(
-                        "status" to "accepted",
-                        "monitorId" to myUid,
-                        "journeyId" to request.journeyId
-                    ))
+                    .setValue(
+                        mapOf(
+                            "status" to "accepted",
+                            "monitorId" to myUid,
+                            "journeyId" to request.journeyId,
+                        ),
+                    )
                 
                 requestDialog = null
                 // Navigate to Monitor screen

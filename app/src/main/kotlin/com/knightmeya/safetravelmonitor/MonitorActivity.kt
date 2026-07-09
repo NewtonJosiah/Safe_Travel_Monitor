@@ -43,7 +43,9 @@ class MonitorActivity : AppCompatActivity(), OnMapReadyCallback {
     private var activeNotificationListener: ChildEventListener? = null
     private var monitoringRequestsListener: ChildEventListener? = null
     private var etaListener: ValueEventListener? = null
+    private var activeJourneyListener: ValueEventListener? = null
     private var monitoredJourneyId: String? = null
+    private var monitoredJourneyRef: DatabaseReference? = null
 
     private val auth = FirebaseAuth.getInstance()
     private val database = FirebaseDatabase.getInstance().reference
@@ -93,6 +95,13 @@ class MonitorActivity : AppCompatActivity(), OnMapReadyCallback {
         handler.removeCallbacks(countdownRunnable)
         removeMonitoredListeners()
         
+        // Remove journey listener
+        activeJourneyListener?.let {
+            monitoredJourneyRef?.removeEventListener(it)
+        }
+        activeJourneyListener = null
+        monitoredJourneyRef = null
+
         // Fix #11: Remove monitoring requests listener to prevent memory leaks
         if (monitoringRequestsListener != null) {
             try {
@@ -229,24 +238,31 @@ class MonitorActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
     private fun listenForJourney(journeyId: String) {
+        // Clean up any existing journey listener first
+        activeJourneyListener?.let {
+            monitoredJourneyRef?.removeEventListener(it)
+        }
+
         binding.statusCard.visibility = View.VISIBLE
-        database.child("monitor_journeys").child(currentUid).child(journeyId)
-            .addValueEventListener(
-                object : ValueEventListener {
-                    override fun onDataChange(snapshot: DataSnapshot) {
-                        val journey = snapshot.getValue(Journey::class.java)
-                        journey?.let {
-                            if (it.isActive) startMonitoring(currentUid, it) else stopMonitoring()
-                        }
+        monitoredJourneyRef = database.child("monitor_journeys").child(currentUid).child(journeyId)
+        activeJourneyListener = object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val journey = snapshot.getValue(Journey::class.java)
+                if (journey != null) {
+                    if (journey.isActive) {
+                        startMonitoring(currentUid, journey)
+                    } else {
+                        stopMonitoring()
                     }
-                    override fun onCancelled(error: DatabaseError) {
-                if (error.code == DatabaseError.PERMISSION_DENIED) {
-                    Log.e("MonitorActivity", "Permission denied for monitoring_requests. Check security rules.")
-                    database.child("monitoring_requests").child(currentUid).removeEventListener(this)
+                } else {
+                    stopMonitoring()
                 }
             }
-                },
-            )
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("MonitorActivity", "Journey listener cancelled: ${error.message}")
+            }
+        }
+        monitoredJourneyRef?.addValueEventListener(activeJourneyListener!!)
     }
 
     private fun removeMonitoredListeners() {
@@ -355,7 +371,10 @@ class MonitorActivity : AppCompatActivity(), OnMapReadyCallback {
                 val note = snapshot.getValue(Notification::class.java)
                 note?.let { 
                     addNotification(it)
-                    if (it.type == "SAFE_ARRIVAL") Toast.makeText(this@MonitorActivity, "Traveler has arrived!", Toast.LENGTH_LONG).show()
+                    when (it.type) {
+                        "SAFE_ARRIVAL" -> Toast.makeText(this@MonitorActivity, "Traveler has arrived!", Toast.LENGTH_LONG).show()
+                        "JOURNEY_TERMINATED" -> Toast.makeText(this@MonitorActivity, "Traveler ended the journey manually.", Toast.LENGTH_LONG).show()
+                    }
                 }
             }
             override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {}
@@ -419,11 +438,16 @@ class MonitorActivity : AppCompatActivity(), OnMapReadyCallback {
 
     private fun stopMonitoring() {
         isMonitoring = false
-        monitoredJourneyId = null
+        // Fix: Call removeMonitoredListeners BEFORE clearing monitoredJourneyId
         removeMonitoredListeners()
+        monitoredJourneyId = null
+        
         binding.tvRemainingTimeLabel.text = getString(R.string.journey_ended)
         binding.tvRemainingTime.text = getString(R.string.zero_time)
         binding.overdueWarning.visibility = View.GONE
+        
+        // Optional: clear markers or show final state
+        travelerMarker?.alpha = 0.5f // Fade out traveler instead of removing
     }
 
     private fun addNotification(notification: Notification) {

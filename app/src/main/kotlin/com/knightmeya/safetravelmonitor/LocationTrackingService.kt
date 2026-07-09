@@ -80,7 +80,7 @@ class LocationTrackingService : Service() {
     private fun startLocationUpdates() {
         val locationRequest = LocationRequest.Builder(
             Priority.PRIORITY_HIGH_ACCURACY,
-            5000
+            5000,
         ).build()
 
         locationCallback = object : LocationCallback() {
