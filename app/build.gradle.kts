@@ -74,11 +74,6 @@ dependencies {
     implementation(libs.firebase.database)
     implementation(libs.firebase.auth)
 
-    val flutterCompileVersion = "1.0"
-    debugImplementation("com.example.flutter_module:flutter_debug:$flutterCompileVersion")
-    "profileImplementation"("com.example.flutter_module:flutter_profile:$flutterCompileVersion")
-    releaseImplementation("com.example.flutter_module:flutter_release:$flutterCompileVersion")
-
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")

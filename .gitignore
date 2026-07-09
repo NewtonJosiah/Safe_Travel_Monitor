@@ -10,7 +10,10 @@ app/build/
 
 # User-specific
 local.properties
+google-services.json
 .artifacts/
+backend/.env.firebase
+signing_report.txt
 
 # Flutter (if any)
 flutter_module/

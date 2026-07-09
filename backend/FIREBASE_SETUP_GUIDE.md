@@ -722,7 +722,7 @@ PORT=5000
 NODE_ENV=development
 
 # JWT
-JWT_SECRET=your_super_secret_jwt_key_change_this
+JWT_SECRET=YOUR_STRONG_JWT_SECRET
 JWT_EXPIRE=7d
 
 # CORS

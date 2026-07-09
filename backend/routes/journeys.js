@@ -2,8 +2,7 @@ const express = require('express');
 const { body, validationResult } = require('express-validator');
 const Journey = require('../models/Journey');
 const Notification = require('../models/Notification');
-const User = require('../models/User');
-const { isTraveler, isMonitor } = require('../middleware/auth');
+const { verifyToken, isTraveler, isMonitor } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -32,8 +31,15 @@ router.post('/', isTraveler, [
     });
 
     await journey.save();
-    await journey.populate('traveler', 'name email phone');
-    await journey.populate('monitors', 'name email phone');
+
+    // Ensure populate succeeds
+    try {
+      await journey.populate('traveler', 'name email phone');
+      await journey.populate('monitors', 'name email phone');
+    } catch (populateError) {
+      console.error('Populate error on creation:', populateError);
+      // We can still continue, but the notification might have less data
+    }
 
     // Notify monitors
     const io = req.app.locals.io;
@@ -87,7 +93,7 @@ router.get('/monitoring', isMonitor, async (req, res) => {
 });
 
 // Get journey details
-router.get('/:journeyId', async (req, res) => {
+router.get('/:journeyId', verifyToken, async (req, res) => {
   try {
     const journey = await Journey.findById(req.params.journeyId)
       .populate('traveler', 'name email phone profilePhoto')
@@ -158,16 +164,36 @@ router.patch('/:journeyId/status', isTraveler, async (req, res) => {
 });
 
 // Get journey history
-router.get('/user/:userId/history', async (req, res) => {
+router.get('/user/:userId/history', verifyToken, async (req, res) => {
   try {
+    // Only allow users to see their own history
+    if (req.user.id !== req.params.userId) {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+
     const journeys = await Journey.find({
       traveler: req.params.userId,
       status: { $in: ['completed', 'cancelled'] }
     })
       .sort({ startTime: -1 })
-      .limit(20);
+      .skip(skip)
+      .limit(limit);
 
-    res.json({ journeys });
+    const total = await Journey.countDocuments({
+      traveler: req.params.userId,
+      status: { $in: ['completed', 'cancelled'] }
+    });
+
+    res.json({
+      journeys,
+      page,
+      totalPages: Math.ceil(total / limit),
+      totalResults: total
+    });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }

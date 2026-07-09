@@ -8,10 +8,16 @@ const router = express.Router();
 
 // Register
 router.post('/register', [
-  body('email').isEmail().normalizeEmail(),
-  body('password').isLength({ min: 6 }),
-  body('name').notEmpty(),
-  body('phone').isMobilePhone()
+  body('email').isEmail().withMessage('Please enter a valid email').normalizeEmail(),
+  body('password')
+    .isLength({ min: 8 })
+    .withMessage('Password must be at least 8 characters long')
+    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/)
+    .withMessage('Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character'),
+  body('name').trim().notEmpty().withMessage('Name is required'),
+  body('phone')
+    .isMobilePhone()
+    .withMessage('Please enter a valid mobile phone number')
 ], async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -136,17 +142,33 @@ router.put('/update', verifyToken, async (req, res) => {
 });
 
 // Register device token for push notifications
-router.post('/device-token', verifyToken, async (req, res) => {
+router.post('/device-token', verifyToken, [
+  body('token').isString().trim().notEmpty().withMessage('Device token is required'),
+  body('platform').isIn(['android', 'ios']).withMessage('Platform must be android or ios')
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
   try {
     const { token, platform } = req.body;
-    const user = await User.findByIdAndUpdate(
-      req.user.id,
-      { $push: { deviceTokens: { token, platform } } },
-      { new: true }
-    );
+    const user = await User.findById(req.user.id);
 
-    res.json({ message: 'Device token registered', user });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Check if token already exists to avoid duplicates
+    const tokenExists = user.deviceTokens.some(dt => dt.token === token);
+    if (!tokenExists) {
+      user.deviceTokens.push({ token, platform });
+      await user.save();
+    }
+
+    res.json({ message: 'Device token registered' });
   } catch (error) {
+    console.error('Device token registration error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });

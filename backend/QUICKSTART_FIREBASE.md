@@ -6,7 +6,7 @@ You have a Firebase project already created:
 - **Project ID**: `safe-travel-monitor`
 - **Project Number**: `897530494352`
 - **Package Name**: `com.knightmeya.safetravelmonitor`
-- **API Key**: `AIzaSyByfYiRjV7Ok84LpnxkRR-xmirnUtzYIVc`
+- **API Key**: `YOUR_API_KEY_HERE`
 
 ---
 

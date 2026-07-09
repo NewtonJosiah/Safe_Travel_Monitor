@@ -2,7 +2,7 @@ const express = require('express');
 const { body, validationResult } = require('express-validator');
 const Location = require('../models/Location');
 const Journey = require('../models/Journey');
-const { isTraveler } = require('../middleware/auth');
+const { verifyToken, isTraveler } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -77,8 +77,21 @@ router.post('/', isTraveler, [
 });
 
 // Get journey location history
-router.get('/journey/:journeyId', async (req, res) => {
+router.get('/journey/:journeyId', verifyToken, async (req, res) => {
   try {
+    const journey = await Journey.findById(req.params.journeyId);
+    if (!journey) {
+      return res.status(404).json({ message: 'Journey not found' });
+    }
+
+    // Check authorization: traveler or a monitor of this journey
+    const isOwner = journey.traveler.toString() === req.user.id;
+    const isMonitor = journey.monitors.some(m => m.toString() === req.user.id);
+
+    if (!isOwner && !isMonitor) {
+      return res.status(403).json({ message: 'Not authorized to view this location history' });
+    }
+
     const locations = await Location.find({ journey: req.params.journeyId })
       .sort({ timestamp: -1 })
       .limit(100);
@@ -90,8 +103,21 @@ router.get('/journey/:journeyId', async (req, res) => {
 });
 
 // Get latest location for journey
-router.get('/journey/:journeyId/latest', async (req, res) => {
+router.get('/journey/:journeyId/latest', verifyToken, async (req, res) => {
   try {
+    const journey = await Journey.findById(req.params.journeyId);
+    if (!journey) {
+      return res.status(404).json({ message: 'Journey not found' });
+    }
+
+    // Check authorization: traveler or a monitor of this journey
+    const isOwner = journey.traveler.toString() === req.user.id;
+    const isMonitor = journey.monitors.some(m => m.toString() === req.user.id);
+
+    if (!isOwner && !isMonitor) {
+      return res.status(403).json({ message: 'Not authorized to view this location' });
+    }
+
     const location = await Location.findOne({ journey: req.params.journeyId })
       .sort({ timestamp: -1 });
 

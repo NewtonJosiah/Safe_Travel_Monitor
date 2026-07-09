@@ -13,6 +13,7 @@ data class User(
     val friends: Map<String, Boolean> = emptyMap() // Map of friend UID -> true
 )
 
+@Suppress("unused")
 @IgnoreExtraProperties
 data class FriendRequest(
     val fromId: String = "",
@@ -61,6 +62,7 @@ data class Notification(
     val type: String = ""
 )
 
+@Suppress("unused")
 enum class NotificationType {
     JOURNEY_STARTED,
     LOCATION_UPDATE,

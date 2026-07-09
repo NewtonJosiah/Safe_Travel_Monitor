@@ -98,12 +98,17 @@ const socketHandlers = (io, socket) => {
       const eta = new Date(journey.estimatedArrivalTime);
 
       if (now > eta && journey.status === 'active') {
-        // Mark as overdue
-        journey.status = 'overdue';
-        await journey.save();
+        // Atomic update to mark as overdue only if it's still active
+        const updatedJourney = await Journey.findOneAndUpdate(
+          { _id: journeyId, status: 'active' },
+          { $set: { status: 'overdue' } },
+          { new: true }
+        ).populate('monitors');
+
+        if (!updatedJourney) return; // Already updated by another process/client
 
         // Notify monitors
-        const notificationPromises = journey.monitors.map(monitorId =>
+        const notificationPromises = updatedJourney.monitors.map(monitorId =>
           Notification.create({
             recipient: monitorId,
             journey: journeyId,
@@ -116,7 +121,7 @@ const socketHandlers = (io, socket) => {
 
         await Promise.all(notificationPromises);
 
-        // Emit to all monitors
+        // Emit to all monitors in the journey room
         io.to(`journey_${journeyId}`).emit('journey_overdue', { journeyId });
       }
     } catch (error) {
