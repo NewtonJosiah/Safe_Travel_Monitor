@@ -3,15 +3,21 @@ package com.knightmeya.safetravelmonitor
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
+import android.view.View
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import coil.load
+import coil.transform.CircleCropTransformation
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
+import com.google.firebase.storage.FirebaseStorage
 import com.knightmeya.safetravelmonitor.databinding.ActivityMainBinding
 import com.knightmeya.safetravelmonitor.models.*
 
@@ -20,15 +26,19 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private val auth = FirebaseAuth.getInstance()
     private val database = FirebaseDatabase.getInstance().reference
+    private val storage = FirebaseStorage.getInstance().reference
     private val permissionRequestCode = 123
     private var requestDialog: androidx.appcompat.app.AlertDialog? = null
+
+    private val pickImage = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        uri?.let { uploadProfilePic(it) }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
         val currentUser = auth.currentUser
         if (currentUser == null) {
-            // Should not happen as SplashActivity is the entry point
             startActivity(Intent(this, SplashActivity::class.java))
             finish()
             return
@@ -57,42 +67,36 @@ class MainActivity : AppCompatActivity() {
 
     private fun listenForMonitoringRequests() {
         val myUid = auth.currentUser?.uid ?: return
-        database.child("monitoring_requests").child(myUid).addChildEventListener(
+        val tenMinutesAgo = System.currentTimeMillis() - (10 * 60 * 1000)
+        
+        database.child("monitoring_requests").child(myUid)
+            .orderByChild("timestamp")
+            .startAt(tenMinutesAgo.toDouble())
+            .addChildEventListener(
             object : ChildEventListener {
                 override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
-                    val request = snapshot.getValue(MonitoringRequest::class.java) ?: return
-                    val journeyId = snapshot.key ?: return
-                    val reqWithId = request.copy(journeyId = journeyId)
-                    if (reqWithId.status == "pending") {
-                        showMonitoringRequestDialog(reqWithId)
+                    val key = snapshot.key ?: return
+                    val request = snapshot.getValue(MonitoringRequest::class.java)?.copy(journeyId = key) ?: return
+                    if (request.status == "pending") {
+                        showMonitoringRequestDialog(request)
                     }
                 }
 
                 override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
-                    // Only handle pending status, skip duplicates from status updates
-                    val request = snapshot.getValue(MonitoringRequest::class.java) ?: return
-                    val journeyId = snapshot.key ?: return
-                    val reqWithId = request.copy(journeyId = journeyId)
-                    // Avoid duplicate dialogs - only show if still pending and dialog not already shown
-                    if ((reqWithId.status == "pending") && (requestDialog == null)) {
-                        showMonitoringRequestDialog(reqWithId)
+                    val key = snapshot.key ?: return
+                    val request = snapshot.getValue(MonitoringRequest::class.java)?.copy(journeyId = key) ?: return
+                    if ((request.status == "pending") && (requestDialog == null)) {
+                        showMonitoringRequestDialog(request)
                     }
                 }
                 override fun onChildRemoved(snapshot: DataSnapshot) {}
                 override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {}
-                override fun onCancelled(error: DatabaseError) {
-                    if (error.code == DatabaseError.PERMISSION_DENIED) {
-                        Log.e("MainActivity", "Permission denied for monitoring_requests. Check security rules.")
-                        // Optionally stop listening to prevent loop if it keeps failing
-                        database.child("monitoring_requests").child(myUid).removeEventListener(this)
-                    }
-                }
+                override fun onCancelled(error: DatabaseError) {}
             },
         )
     }
 
     private fun showMonitoringRequestDialog(request: MonitoringRequest) {
-        // Prevent duplicate dialogs
         if (requestDialog?.isShowing == true) return
         
         requestDialog = androidx.appcompat.app.AlertDialog.Builder(this)
@@ -101,52 +105,78 @@ class MainActivity : AppCompatActivity() {
             .setCancelable(false)
             .setPositiveButton("Accept") { _, _ ->
                 val myUid = auth.currentUser?.uid ?: return@setPositiveButton
-                
-                // 1. Update global request node
                 database.child("monitoring_requests").child(myUid).child(request.journeyId).child("status").setValue("accepted")
                 
-                // 2. Notify traveler on their private secure node - use consistent path with TravelerActivity and MonitorActivity
-                database.child("users").child(request.travelerId).child("approval_response").child(request.journeyId)
-                    .setValue(
-                        mapOf(
-                            "status" to "accepted",
-                            "monitorId" to myUid,
-                            "journeyId" to request.journeyId,
-                        ),
-                    )
-                
-                requestDialog = null
-                // Navigate to Monitor screen
-                startActivity(Intent(this, MonitorActivity::class.java))
+                val monitorIntent = Intent(this, MonitorActivity::class.java)
+                monitorIntent.putExtra("EXTRA_JOURNEY_ID", request.journeyId)
+                startActivity(monitorIntent)
             }
             .setNegativeButton("Reject") { _, _ ->
                 val myUid = auth.currentUser?.uid ?: return@setNegativeButton
                 database.child("monitoring_requests").child(myUid).child(request.journeyId).child("status").setValue("rejected")
-                
-                // Use consistent path with MonitorActivity
-                database.child("users").child(request.travelerId).child("approval_response").child(request.journeyId)
-                    .setValue(mapOf("status" to "rejected"))
-                
-                requestDialog = null
             }
             .setOnDismissListener { requestDialog = null }
             .show()
     }
 
     private fun loadUserInfo(uid: String) {
-        database.child("users").child(uid).addListenerForSingleValueEvent(object : ValueEventListener {
+        database.child("users").child(uid).addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 val user = snapshot.getValue(User::class.java)
                 user?.let {
-                    binding.tvUserName.text = getString(R.string.hello_user, it.name)
-                    binding.tvUserID.text = getString(R.string.your_id, it.numericId)
+                    binding.tvUserName.text = it.name
+                    binding.tvUserID.text = getString(R.string.id_format, it.numericId)
+                    if (!it.profilePic.isNullOrEmpty()) {
+                        binding.ivProfilePic.load(it.profilePic) {
+                            transformations(CircleCropTransformation())
+                        }
+                        binding.tvUploadHint.visibility = View.GONE
+                    } else {
+                        binding.ivProfilePic.setImageResource(android.R.color.transparent)
+                        binding.tvUploadHint.visibility = View.VISIBLE
+                    }
                 }
             }
             override fun onCancelled(error: DatabaseError) {}
         })
     }
 
+    private fun uploadProfilePic(uri: Uri) {
+        val uid = auth.currentUser?.uid ?: return
+        val ref = storage.child("profile_pics/$uid.jpg")
+        
+        Toast.makeText(this, "Uploading...", Toast.LENGTH_SHORT).show()
+        
+        ref.putFile(uri).continueWithTask { task ->
+            if (!task.isSuccessful) {
+                task.exception?.let { throw it }
+            }
+            ref.downloadUrl
+        }.addOnSuccessListener { downloadUri ->
+            database.child("users").child(uid).child("profilePic").setValue(downloadUri.toString())
+                .addOnSuccessListener {
+                    Toast.makeText(this, "Profile updated!", Toast.LENGTH_SHORT).show()
+                }
+        }.addOnFailureListener { e ->
+            Log.e("MainActivity", "Upload/URL failed", e)
+            val errorMsg = if (e.message?.contains("exist") == true) {
+                "Storage not initialized. Please enable Storage in Firebase Console."
+            } else {
+                e.message ?: "Unknown error"
+            }
+            Toast.makeText(this, "Upload failed: $errorMsg", Toast.LENGTH_LONG).show()
+        }
+    }
+
     private fun setupUI() {
+        binding.profilePicContainer.setOnClickListener {
+            pickImage.launch("image/*")
+        }
+
+        binding.btnFriendsFamily.setOnClickListener {
+            startActivity(Intent(this, FriendsActivity::class.java))
+        }
+
         binding.travellerButton.setOnClickListener {
             startActivity(Intent(this, TravelerActivity::class.java))
         }
@@ -166,8 +196,6 @@ class MainActivity : AppCompatActivity() {
         val permissions = mutableListOf(
             Manifest.permission.ACCESS_FINE_LOCATION,
             Manifest.permission.ACCESS_COARSE_LOCATION,
-            Manifest.permission.SEND_SMS,
-            Manifest.permission.RECEIVE_SMS
         )
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {

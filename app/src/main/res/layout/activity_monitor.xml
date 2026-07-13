@@ -37,12 +37,14 @@
         app:layout_constraintTop_toBottomOf="@id/headerTitle" />
 
     <androidx.core.widget.NestedScrollView
+        android:id="@+id/monitorScrollView"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintTop_toBottomOf="@id/headerBackground">
 
         <LinearLayout
+            android:id="@+id/monitorContainer"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
@@ -90,7 +92,7 @@
                         android:layout_gravity="bottom|start"
                         android:layout_margin="16dp"
                         android:padding="0dp"
-                        app:icon="@android:drawable/ic_menu_close_clear_cancel"
+                        app:icon="@android:drawable/ic_menu_zoom"
                         app:iconGravity="textStart"
                         app:iconPadding="0dp"
                         app:iconTint="#1E293B"
@@ -120,24 +122,39 @@
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
                         android:visibility="visible">
-                        <LinearLayout
+                        <RelativeLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:gravity="center_vertical"
-                            android:orientation="horizontal"
                             android:layout_marginBottom="12dp">
-                            <View
-                                android:layout_width="10dp"
-                                android:layout_height="10dp"
-                                android:background="@drawable/circle_green" />
+
                             <TextView
+                                android:id="@+id/badgeActive"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:layout_marginStart="8dp"
-                                android:text="Active Journey"
-                                android:textColor="#15803D"
-                                android:textStyle="bold" />
-                        </LinearLayout>
+                                android:background="@drawable/badge_green"
+                                android:paddingHorizontal="12dp"
+                                android:paddingVertical="4dp"
+                                android:text="● Active Journey"
+                                android:textColor="#FFFFFF"
+                                android:textSize="12sp"
+                                android:textStyle="bold"
+                                android:layout_alignParentStart="true"
+                                android:visibility="visible" />
+
+                            <TextView
+                                android:id="@+id/badgeEnded"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:background="@drawable/badge_black"
+                                android:paddingHorizontal="12dp"
+                                android:paddingVertical="4dp"
+                                android:text="Journey Ended"
+                                android:textColor="#FFFFFF"
+                                android:textSize="12sp"
+                                android:textStyle="bold"
+                                android:layout_alignParentEnd="true"
+                                android:visibility="gone" />
+                        </RelativeLayout>
 
                         <!-- Overdue Warning -->
                         <LinearLayout

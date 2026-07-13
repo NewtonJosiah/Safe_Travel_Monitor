@@ -40,6 +40,10 @@
             android:exported="true" />
 
         <activity
+            android:name=".FriendsActivity"
+            android:exported="false" />
+
+        <activity
             android:name=".TravelerActivity"
             android:exported="true" />
 

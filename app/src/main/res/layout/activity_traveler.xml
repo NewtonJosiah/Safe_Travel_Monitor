@@ -65,35 +65,119 @@
             android:textColor="#FFFFFF"
             android:textSize="9sp"
             android:textStyle="bold" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnEmergencyHeader"
-            android:layout_width="wrap_content"
-            android:layout_height="44dp"
-            android:layout_marginTop="8dp"
-            android:text="EMERGENCY"
-            android:textColor="#FFFFFF"
-            android:textSize="12sp"
-            android:textStyle="bold"
-            app:backgroundTint="#FF0000"
-            app:cornerRadius="8dp"
-            android:paddingHorizontal="16dp"
-            android:insetTop="0dp"
-            android:insetBottom="0dp" />
     </LinearLayout>
 
     <androidx.core.widget.NestedScrollView
-        android:id="@+id/scrollView"
+        android:id="@+id/travelerScrollView"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintTop_toBottomOf="@id/headerBackground">
 
         <LinearLayout
+            android:id="@+id/travelerContainer"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:padding="16dp">
+
+            <!-- Map Container - Always Visible -->
+            <androidx.cardview.widget.CardView
+                android:id="@+id/mapCard"
+                android:layout_width="match_parent"
+                android:layout_height="300dp"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="4dp"
+                android:layout_marginBottom="16dp">
+                <FrameLayout
+                    android:id="@+id/mapContainer"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent">
+
+                    <androidx.fragment.app.FragmentContainerView
+                        android:id="@+id/googleMap"
+                        android:name="com.google.android.gms.maps.SupportMapFragment"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent" />
+
+                    <!-- Telemetry Overlay -->
+                    <include
+                        android:id="@+id/telemetryLayout"
+                        layout="@layout/layout_telemetry_dashboard"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="top"
+                        android:visibility="gone" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnMaximize"
+                        style="@style/Widget.Material3.Button.TonalButton"
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:layout_gravity="bottom|start"
+                        android:layout_margin="16dp"
+                        android:padding="0dp"
+                        app:icon="@android:drawable/ic_menu_zoom"
+                        app:iconGravity="textStart"
+                        app:iconPadding="0dp"
+                        app:iconTint="#1E293B"
+                        app:backgroundTint="#F1F5F9"
+                        app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.MediumComponent" />
+
+                    <TextView
+                        android:id="@+id/tvMapHint"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="bottom|center_horizontal"
+                        android:layout_marginBottom="12dp"
+                        android:background="@drawable/map_hint_background"
+                        android:paddingHorizontal="12dp"
+                        android:paddingVertical="4dp"
+                        android:text="Tap map to set destination"
+                        android:textColor="#FFFFFF"
+                        android:textSize="10sp"
+                        android:elevation="5dp" />
+
+                    <!-- Floating Search Bar -->
+                    <androidx.cardview.widget.CardView
+                        android:id="@+id/searchCard"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_margin="12dp"
+                        android:layout_marginTop="60dp"
+                        app:cardCornerRadius="12dp"
+                        app:cardElevation="8dp"
+                        android:layout_gravity="top"
+                        android:visibility="visible">
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:padding="8dp"
+                            android:gravity="center_vertical">
+                            <ImageView
+                                android:layout_width="24dp"
+                                android:layout_height="24dp"
+                                android:src="@android:drawable/ic_menu_search"
+                                app:tint="#64748B"
+                                android:layout_marginStart="8dp" />
+                            <AutoCompleteTextView
+                                android:id="@+id/etSearchLocation"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:hint="Search destination..."
+                                android:background="@null"
+                                android:paddingHorizontal="12dp"
+                                android:paddingVertical="8dp"
+                                android:imeOptions="actionSearch"
+                                android:inputType="text"
+                                android:completionThreshold="3"
+                                android:textSize="14sp" />
+                        </LinearLayout>
+                    </androidx.cardview.widget.CardView>
+                </FrameLayout>
+            </androidx.cardview.widget.CardView>
 
             <!-- Selection State UI -->
             <LinearLayout
@@ -102,103 +186,6 @@
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
                 android:visibility="visible">
-
-                <!-- Map Container -->
-                <androidx.cardview.widget.CardView
-                    android:id="@+id/mapCard"
-                    android:layout_width="match_parent"
-                    android:layout_height="300dp"
-                    app:cardCornerRadius="16dp"
-                    app:cardElevation="4dp"
-                    android:layout_marginBottom="16dp">
-                    <FrameLayout
-                        android:id="@+id/mapContainer"
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent">
-
-                        <androidx.fragment.app.FragmentContainerView
-                            android:id="@+id/googleMap"
-                            android:name="com.google.android.gms.maps.SupportMapFragment"
-                            android:layout_width="match_parent"
-                            android:layout_height="match_parent" />
-
-                        <!-- Telemetry Overlay -->
-                        <include
-                            android:id="@+id/telemetryLayout"
-                            layout="@layout/layout_telemetry_dashboard"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_gravity="top" />
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btnMaximize"
-                            style="@style/Widget.Material3.Button.TonalButton"
-                            android:layout_width="44dp"
-                            android:layout_height="44dp"
-                            android:layout_gravity="bottom|start"
-                            android:layout_margin="16dp"
-                            android:padding="0dp"
-                            app:icon="@android:drawable/ic_menu_close_clear_cancel"
-                            app:iconGravity="textStart"
-                            app:iconPadding="0dp"
-                            app:iconTint="#1E293B"
-                            app:backgroundTint="#F1F5F9"
-                            app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.MediumComponent" />
-
-                        <TextView
-                            android:id="@+id/tvMapHint"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_gravity="bottom|center_horizontal"
-                            android:layout_marginBottom="12dp"
-                            android:background="@drawable/map_hint_background"
-                            android:paddingHorizontal="12dp"
-                            android:paddingVertical="4dp"
-                            android:text="Tap map to set destination"
-                            android:textColor="#FFFFFF"
-                            android:textSize="10sp"
-                            android:elevation="5dp" />
-
-                        <!-- Floating Search Bar -->
-                        <androidx.cardview.widget.CardView
-                            android:id="@+id/searchCard"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_margin="12dp"
-                            android:layout_marginTop="60dp"
-                            app:cardCornerRadius="12dp"
-                            app:cardElevation="8dp"
-                            android:layout_gravity="top"
-                            android:visibility="visible">
-                            <LinearLayout
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:orientation="horizontal"
-                                android:padding="8dp"
-                                android:gravity="center_vertical">
-                                <ImageView
-                                    android:layout_width="24dp"
-                                    android:layout_height="24dp"
-                                    android:src="@android:drawable/ic_menu_search"
-                                    app:tint="#64748B"
-                                    android:layout_marginStart="8dp" />
-                                <AutoCompleteTextView
-                                    android:id="@+id/etSearchLocation"
-                                    android:layout_width="0dp"
-                                    android:layout_height="wrap_content"
-                                    android:layout_weight="1"
-                                    android:hint="Search destination..."
-                                    android:background="@null"
-                                    android:paddingHorizontal="12dp"
-                                    android:paddingVertical="8dp"
-                                    android:imeOptions="actionSearch"
-                                    android:inputType="text"
-                                    android:completionThreshold="3"
-                                    android:textSize="14sp" />
-                            </LinearLayout>
-                        </androidx.cardview.widget.CardView>
-                    </FrameLayout>
-                </androidx.cardview.widget.CardView>
 
                 <!-- Monitor ID Input -->
                 <TextView
@@ -215,7 +202,7 @@
                     style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="16dp"
+                    android:layout_marginBottom="8dp"
                     android:hint="Enter monitor's numeric ID">
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etMonitorId"
@@ -224,6 +211,41 @@
                         android:inputType="number"
                         android:maxLength="8" />
                 </com.google.android.material.textfield.TextInputLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="8dp">
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="OR SELECT FRIEND"
+                        android:textSize="10sp"
+                        android:textColor="@color/muted_foreground"
+                        android:textStyle="bold" />
+                    <EditText
+                        android:id="@+id/etSearchFriends"
+                        android:layout_width="120dp"
+                        android:layout_height="32dp"
+                        android:hint="Search name/ID"
+                        android:textSize="11sp"
+                        android:background="@drawable/search_background_small"
+                        android:paddingHorizontal="8dp"
+                        android:drawableStart="@android:drawable/ic_menu_search"
+                        android:drawablePadding="4dp"
+                        android:singleLine="true" />
+                </LinearLayout>
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/rvFriendsSelect"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+                    android:layout_marginBottom="16dp" />
 
                 <!-- Travel Mode -->
                 <TextView
@@ -422,14 +444,14 @@
                             android:id="@+id/tvETA"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="ETA: 10:30 AM"
+                            android:text="Target Arrival: --:--"
                             android:textColor="#374151"
                             android:layout_marginBottom="8dp" />
                         <TextView
                             android:id="@+id/tvElapsedTime"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Time Elapsed: 05:20"
+                            android:text="Remaining Time: --:--"
                             android:textColor="#374151"
                             android:textStyle="bold" />
                     </LinearLayout>

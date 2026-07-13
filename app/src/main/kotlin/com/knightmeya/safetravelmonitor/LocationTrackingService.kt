@@ -15,7 +15,6 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.google.android.gms.location.*
 import com.google.firebase.database.FirebaseDatabase
-import com.knightmeya.safetravelmonitor.models.LocationUpdate
 
 class LocationTrackingService : Service() {
 
@@ -41,11 +40,34 @@ class LocationTrackingService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // Solution 4: Retrieve parameters from Intent Extras for zero-latency startup
+        val intentJourneyId = intent?.getStringExtra("EXTRA_JOURNEY_ID")
+        val intentMonitorId = intent?.getStringExtra("EXTRA_MONITOR_ID")
+        val intentTravelerUid = intent?.getStringExtra("EXTRA_TRAVELER_UID")
+
+        if (!intentJourneyId.isNullOrEmpty()) {
+            journeyId = intentJourneyId
+            monitorId = intentMonitorId
+            travelerUid = intentTravelerUid
+            Log.d("LocationTrackingService", "Started via Intent with jId=$journeyId, mId=$monitorId")
+        } else {
+            // Fallback to SharedPreferences if started by system or if extras are missing
+            val prefs = getSharedPreferences("SafeTravelPrefs", MODE_PRIVATE)
+            val savedJId = prefs.getString("active_journey_id", null)
+            val savedMId = prefs.getString("monitor_id", null)
+            
+            if (savedJId != null) journeyId = savedJId
+            if (savedMId != null) monitorId = savedMId
+            if (travelerUid == null) travelerUid = prefs.getString("traveler_uid", null)
+            
+            Log.d("LocationTrackingService", "Started via Fallback/System with jId=$journeyId, mId=$monitorId")
+        }
+
         // Fix #12: Always call startForeground first to avoid ANR/Crash on Android 12+
         startForegroundService()
 
         if (journeyId.isNullOrEmpty() || monitorId.isNullOrEmpty()) {
-            Log.w("LocationTrackingService", "No active journey - stopping service")
+            Log.w("LocationTrackingService", "No active journey data found (jId=$journeyId, mId=$monitorId) - stopping service")
             stopSelf()
             return START_NOT_STICKY
         }
@@ -90,16 +112,22 @@ class LocationTrackingService : Service() {
                     val jId = journeyId
                     val mId = monitorId
                     if ((jId != null) && (mId != null)) {
-                        val update = LocationUpdate(
-                            latitude = location.latitude,
-                            longitude = location.longitude,
-                            accuracy = location.accuracy,
-                            timestamp = System.currentTimeMillis()
+                        val locationUpdates = mapOf<String, Any>(
+                            "latitude" to location.latitude,
+                            "longitude" to location.longitude,
+                            "accuracy" to location.accuracy,
+                            "timestamp" to System.currentTimeMillis(),
                         )
-                        database.child("monitor_locations").child(mId).child(jId).setValue(update)
+                        Log.d("LocationTrackingService", "Updating location for monitor $mId: ${location.latitude}, ${location.longitude}")
+                        database.child("monitor_locations").child(mId).child(jId).updateChildren(locationUpdates)
+                            .addOnSuccessListener {
+                                Log.d("LocationTrackingService", "Location update success")
+                            }
                             .addOnFailureListener { e ->
                                 Log.e("LocationTrackingService", "Failed to update location", e)
                             }
+                    } else {
+                        Log.w("LocationTrackingService", "Cannot update location: jId=$jId, mId=$mId")
                     }
 
                     // Also send local broadcast

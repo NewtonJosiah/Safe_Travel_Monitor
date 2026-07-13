@@ -1,13 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="horizontal"
     android:paddingVertical="12dp"
     android:paddingHorizontal="16dp"
-    android:background="#E60F172A">
+    android:background="#E60F172A"
+    android:gravity="center_vertical">
 
+    <!-- Speed -->
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
@@ -29,15 +30,15 @@
             android:text="0.0 km/h"
             android:textColor="#FFFFFF"
             android:textStyle="bold"
-            android:textSize="16sp" />
+            android:textSize="14sp" />
     </LinearLayout>
 
     <View
         android:layout_width="1dp"
-        android:layout_height="32dp"
-        android:layout_gravity="center_vertical"
+        android:layout_height="24dp"
         android:background="#1E293B" />
 
+    <!-- Heading -->
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
@@ -59,27 +60,60 @@
             android:text="NORTH"
             android:textColor="#FFFFFF"
             android:textStyle="bold"
-            android:textSize="16sp" />
+            android:textSize="14sp" />
     </LinearLayout>
 
     <View
         android:layout_width="1dp"
-        android:layout_height="32dp"
-        android:layout_gravity="center_vertical"
+        android:layout_height="24dp"
         android:background="#1E293B" />
 
+    <!-- Battery (Will be visible on both, but toggleable if needed) -->
+    <LinearLayout
+        android:id="@+id/batteryContainer"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:gravity="center">
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="BATTERY"
+            android:textColor="#94A3B8"
+            android:letterSpacing="0.1"
+            android:textSize="10sp"
+            android:textStyle="bold" />
+        <TextView
+            android:id="@+id/tvBattery"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="100%"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold"
+            android:textSize="14sp" />
+    </LinearLayout>
+
+    <View
+        android:id="@+id/sosDivider"
+        android:layout_width="1dp"
+        android:layout_height="24dp"
+        android:background="#1E293B" />
+
+    <!-- SOS Button (Monitor Only) -->
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btnEmergency"
         style="@style/Widget.Material3.Button.TonalButton"
         android:layout_width="0dp"
-        android:layout_height="wrap_content"
+        android:layout_height="36dp"
         android:layout_weight="1"
         android:text="SOS"
         android:textColor="@android:color/white"
-        app:backgroundTint="#EF4444"
+        android:backgroundTint="#EF4444"
         android:insetTop="0dp"
         android:insetBottom="0dp"
-        android:textSize="12sp"
-        android:textStyle="bold" />
+        android:textSize="11sp"
+        android:textStyle="bold"
+        android:padding="0dp" />
 
 </LinearLayout>

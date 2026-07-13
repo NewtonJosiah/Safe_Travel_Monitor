@@ -26,7 +26,8 @@ data class MonitoringRequest(
     val travelerId: String = "",
     val travelerName: String = "",
     val journeyId: String = "",
-    val status: String = "pending" // pending, accepted, rejected
+    val status: String = "pending", // pending, accepted, rejected
+    val timestamp: Long = 0
 )
 
 @IgnoreExtraProperties
@@ -42,9 +43,11 @@ data class Journey(
     val startTime: Long = 0,
     val estimatedArrivalTime: Long = 0,
     var isActive: Boolean = false,
-    val travelMode: String = "driving"
+    val travelMode: String = "driving",
+    val routePolyline: String = ""
 )
 
+@Suppress("unused")
 @IgnoreExtraProperties
 data class LocationUpdate(
     val latitude: Double = 0.0,

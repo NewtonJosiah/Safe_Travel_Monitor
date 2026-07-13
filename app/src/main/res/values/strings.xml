@@ -31,9 +31,13 @@
     <string name="zero_time">00h:00min:00sec</string>
     <string name="battery_percentage">%1$d%%</string>
     <string name="eta_timer_format">ETA: %1$02dh:%2$02dmin:%3$02dsec</string>
+    <string name="remaining_time_format">Remaining Time: %1$02dh:%2$02dmin:%3$02dsec</string>
+    <string name="target_arrival_format">Target Arrival: %1$s</string>
     <string name="speed_kmh">%1$.1f km/h</string>
     <string name="distance_km_format">%1$.1f km</string>
     <string name="duration_min_format">%1$d min</string>
+    <string name="timer_format">%1$02d:%2$02d:%3$02d</string>
     <string name="journey_ended">Journey Ended</string>
+    <string name="id_format">ID: %1$s</string>
     <string name="verification_email_sent">We\'ve sent a verification link to %1$s. Please check your inbox and click the link to continue.</string>
 </resources>
