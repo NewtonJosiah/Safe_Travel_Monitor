@@ -451,7 +451,16 @@
                             android:id="@+id/tvElapsedTime"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Remaining Time: --:--"
+                            android:text="ETA: --:--"
+                            android:textColor="#374151"
+                            android:textStyle="bold"
+                            android:layout_marginBottom="8dp" />
+
+                        <TextView
+                            android:id="@+id/tvDeadlineTime"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Deadline: --:--"
                             android:textColor="#374151"
                             android:textStyle="bold" />
                     </LinearLayout>

@@ -61,6 +61,7 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
     private var isRequestPending = false
     private var journeyStartTime = 0L
     private var estimatedArrivalTime = 0L
+    private var deadlineTime = 0L
     private var selectedDestination: LatLng? = null
     private var currentLocation: LatLng? = null
     private var lastLocationTimestamp: Long = 0L
@@ -75,6 +76,8 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
     private var averageSpeedKmh = 0f
     private var isArrived = false
     private var currentBatteryLevel = 0
+    private var lastMovementTimestamp: Long = 0L
+    private var stationaryAlertSent = false
 
     private val auth = FirebaseAuth.getInstance()
     private val database = FirebaseDatabase.getInstance().reference
@@ -98,19 +101,47 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
     private val timerRunnable = object : Runnable {
         override fun run() {
             if (isJourneyActive) {
-                val remainingMillis = estimatedArrivalTime - System.currentTimeMillis()
-                if (remainingMillis <= 0) {
-                    binding.tvElapsedTime.text = getString(R.string.zero_time)
-                    if ((!isArrived) && (averageSpeedKmh < 1.0f)) {
-                        sendEmergencyAlert("Automatic Alert: Traveler stationary and timer expired.")
-                    }
+                val now = System.currentTimeMillis()
+                
+                // 1. Dynamic ETA Countdown
+                val remainingEtaMillis = estimatedArrivalTime - now
+                if (remainingEtaMillis <= 0) {
+                    binding.tvElapsedTime.text = "ETA: Arrived"
                 } else {
-                    val totalSecs = remainingMillis / 1000
+                    val totalSecs = remainingEtaMillis / 1000
                     val hours = totalSecs / 3600
                     val minutes = (totalSecs % 3600) / 60
                     val seconds = totalSecs % 60
-                    binding.tvElapsedTime.text = getString(R.string.remaining_time_format, hours, minutes, seconds)
+                    binding.tvElapsedTime.text = getString(R.string.eta_timer_format, hours, minutes, seconds)
                 }
+
+                // 2. Fixed Deadline Countdown
+                val remainingDeadlineMillis = deadlineTime - now
+                if (remainingDeadlineMillis <= 0) {
+                    binding.tvDeadlineTime.text = "Deadline: EXPIRED"
+                    binding.tvDeadlineTime.setTextColor(getColor(R.color.destructive))
+                    
+                    if (!isArrived) {
+                        sendEmergencyAlert("Traveler has missed the expected arrival deadline!")
+                    }
+                } else {
+                    val totalSecs = remainingDeadlineMillis / 1000
+                    val hours = totalSecs / 3600
+                    val minutes = (totalSecs % 3600) / 60
+                    val seconds = totalSecs % 60
+                    binding.tvDeadlineTime.text = getString(R.string.remaining_time_format, hours, minutes, seconds)
+                    binding.tvDeadlineTime.setTextColor(getColor(R.color.muted_foreground))
+                }
+
+                // 3. Stationary Detection (10 Minutes)
+                if (!isArrived && lastMovementTimestamp > 0) {
+                    val stationaryDuration = now - lastMovementTimestamp
+                    if (stationaryDuration > 10 * 60 * 1000 && !stationaryAlertSent) {
+                        sendEmergencyAlert("Stationary Alert: Traveler has not moved for over 10 minutes.")
+                        stationaryAlertSent = true
+                    }
+                }
+
                 binding.root.postDelayed(this, 1000)
             }
         }
@@ -195,8 +226,15 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
         
         if (prev != null) {
             Location.distanceBetween(prev.latitude, prev.longitude, current.latitude, current.longitude, results)
-            totalDistanceCovered += results[0]
+            val distanceMoved = results[0]
+            totalDistanceCovered += distanceMoved
             
+            // Check for significant movement (> 5 meters) to reset stationary timer
+            if (distanceMoved > 5f) {
+                lastMovementTimestamp = System.currentTimeMillis()
+                stationaryAlertSent = false
+            }
+
             val timeElapsedHours = (System.currentTimeMillis() - journeyStartTime) / 3600000f
             if (timeElapsedHours > 0.001f) {
                 averageSpeedKmh = (totalDistanceCovered / 1000f) / timeElapsedHours
@@ -1018,6 +1056,7 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
             monitorId = prefs.getString("monitor_id", null)
             journeyStartTime = prefs.getLong("journey_start_time", 0)
             estimatedArrivalTime = prefs.getLong("estimated_arrival_time", 0)
+            deadlineTime = prefs.getLong("deadline_time", 0)
             travelMode = prefs.getString("travel_mode", "driving") ?: "driving"
             
             val destLat = prefs.getFloat("dest_lat", 0f).toDouble()
@@ -1055,6 +1094,9 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
         monitorId = monitorUid
         isJourneyActive = true
         journeyStartTime = System.currentTimeMillis()
+        lastMovementTimestamp = journeyStartTime
+        stationaryAlertSent = false
+        deadlineTime = estimatedArrivalTime // Deadline is fixed at the start
         totalDistanceCovered = 0f
         averageSpeedKmh = 0f
         isArrived = false
@@ -1075,6 +1117,7 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
             putString("traveler_uid", currentUid)
             putLong("journey_start_time", journeyStartTime)
             putLong("estimated_arrival_time", estimatedArrivalTime)
+            putLong("deadline_time", deadlineTime)
             putString("travel_mode", travelMode)
             putFloat("dest_lat", dest.latitude.toFloat())
             putFloat("dest_lng", dest.longitude.toFloat())
@@ -1085,6 +1128,7 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
             destination = MyLatLng(dest.latitude, dest.longitude),
             startTime = journeyStartTime,
             estimatedArrivalTime = estimatedArrivalTime,
+            deadlineTime = deadlineTime,
             isActive = true,
             travelMode = travelMode,
             routePolyline = currentEncodedPolyline
@@ -1143,6 +1187,8 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
         journeyId = null
         initialRouteDistanceMeters = 0f
         currentEncodedPolyline = ""
+        lastMovementTimestamp = 0L
+        stationaryAlertSent = false
         stopService(Intent(this, LocationTrackingService::class.java))
         
         getSharedPreferences("SafeTravelPrefs", MODE_PRIVATE).edit { clear() }

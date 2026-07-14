@@ -36,6 +36,7 @@ class MonitorActivity : AppCompatActivity(), OnMapReadyCallback {
     private lateinit var binding: ActivityMonitorBinding
     private var isMonitoring = false
     private var estimatedArrivalTime = 0L
+    private var deadlineTime = 0L
     private val notifications = mutableListOf<Notification>()
     private lateinit var adapter: NotificationAdapter
     
@@ -68,21 +69,26 @@ class MonitorActivity : AppCompatActivity(), OnMapReadyCallback {
     private val countdownRunnable = object : Runnable {
         override fun run() {
             if (isMonitoring) {
-                val remainingMillis = estimatedArrivalTime - System.currentTimeMillis()
-                val totalSecs = max(0, remainingMillis / 1000)
-                val hours = totalSecs / 3600
-                val minutes = (totalSecs % 3600) / 60
-                val remSeconds = totalSecs % 60
+                val now = System.currentTimeMillis()
                 
-                binding.tvRemainingTime.text = getString(R.string.timer_format, hours, minutes, remSeconds)
-                
-                if (remainingMillis < 0) {
+                // 1. Dynamic ETA Display
+                val remainingEtaMillis = estimatedArrivalTime - now
+                val etaSecs = max(0L, remainingEtaMillis / 1000)
+                binding.tvRemainingTime.text = getString(R.string.timer_format, etaSecs / 3600, (etaSecs % 3600) / 60, etaSecs % 60)
+
+                // 2. Fixed Deadline Countdown
+                val remainingDeadlineMillis = deadlineTime - now
+                val deadlineSecs = max(0L, remainingDeadlineMillis / 1000)
+                binding.tvDeadlineCountdown.text = getString(R.string.timer_format, deadlineSecs / 3600, (deadlineSecs % 3600) / 60, deadlineSecs % 60)
+
+                if (remainingDeadlineMillis <= 0) {
                     binding.overdueWarning.visibility = View.VISIBLE
-                    binding.tvRemainingTime.setTextColor(getColor(R.color.destructive))
+                    binding.tvDeadlineCountdown.setTextColor(getColor(R.color.destructive))
                 } else {
                     binding.overdueWarning.visibility = View.GONE
-                    binding.tvRemainingTime.setTextColor(getColor(R.color.traveler_header_start))
+                    binding.tvDeadlineCountdown.setTextColor(getColor(R.color.destructive)) // Keep red for deadline?
                 }
+                
                 handler.postDelayed(this, 1000)
             }
         }
@@ -381,6 +387,7 @@ class MonitorActivity : AppCompatActivity(), OnMapReadyCallback {
         
         // Initialize journey data immediately from the journey object
         estimatedArrivalTime = journey.estimatedArrivalTime
+        deadlineTime = journey.deadlineTime
         updateDestinationMarker(LatLng(journey.destination.latitude, journey.destination.longitude))
         updateRouteLine(journey.routePolyline)
         
@@ -396,8 +403,6 @@ class MonitorActivity : AppCompatActivity(), OnMapReadyCallback {
         // UI Badges Reset
         binding.badgeActive.visibility = View.VISIBLE
         binding.badgeEnded.visibility = View.GONE
-        binding.tvRemainingTimeLabel.visibility = View.VISIBLE
-        binding.tvRemainingTimeLabel.text = getString(R.string.time_remaining)
         binding.tvRemainingTime.setTextColor(getColor(R.color.traveler_header_start))
         
         // Solution 3: Defensive Data Casting (Double/Long safety)
@@ -467,6 +472,14 @@ class MonitorActivity : AppCompatActivity(), OnMapReadyCallback {
         }
         database.child("monitor_journeys").child(monitorId).child(journey.id).child("estimatedArrivalTime")
             .addValueEventListener(etaListener!!)
+
+        val deadlineRef = database.child("monitor_journeys").child(monitorId).child(journey.id).child("deadlineTime")
+        deadlineRef.addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                deadlineTime = (snapshot.value as? Number)?.toLong() ?: 0L
+            }
+            override fun onCancelled(error: DatabaseError) {}
+        })
 
         activeNotificationListener = object : ChildEventListener {
             override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
@@ -645,7 +658,6 @@ class MonitorActivity : AppCompatActivity(), OnMapReadyCallback {
         binding.badgeActive.visibility = View.GONE
         binding.badgeEnded.visibility = View.VISIBLE
         
-        binding.tvRemainingTimeLabel.visibility = View.INVISIBLE
         binding.tvRemainingTime.text = getString(R.string.zero_time)
         binding.tvRemainingTime.setTextColor(getColor(R.color.muted_foreground))
         binding.overdueWarning.visibility = View.GONE

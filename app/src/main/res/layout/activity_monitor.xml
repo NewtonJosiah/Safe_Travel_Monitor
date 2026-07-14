@@ -185,10 +185,9 @@
                                 android:orientation="vertical"
                                 android:gravity="center">
                                 <TextView
-                                    android:id="@+id/tvRemainingTimeLabel"
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="TIME REMAINING"
+                                    android:text="ETA"
                                     android:textSize="10sp"
                                     android:textColor="#6B7280" />
                                 <TextView
@@ -196,8 +195,30 @@
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:text="00:00"
-                                    android:textSize="24sp"
+                                    android:textSize="20sp"
                                     android:textColor="#7C3AED"
+                                    android:textStyle="bold" />
+                            </LinearLayout>
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical"
+                                android:gravity="center">
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="DEADLINE"
+                                    android:textSize="10sp"
+                                    android:textColor="#6B7280" />
+                                <TextView
+                                    android:id="@+id/tvDeadlineCountdown"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="00:00"
+                                    android:textSize="20sp"
+                                    android:textColor="#EF4444"
                                     android:textStyle="bold" />
                             </LinearLayout>
                         </LinearLayout>

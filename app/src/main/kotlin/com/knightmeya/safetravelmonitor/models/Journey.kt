@@ -42,6 +42,7 @@ data class Journey(
     val destination: MyLatLng = MyLatLng(),
     val startTime: Long = 0,
     val estimatedArrivalTime: Long = 0,
+    val deadlineTime: Long = 0,
     var isActive: Boolean = false,
     val travelMode: String = "driving",
     val routePolyline: String = ""
