@@ -36,6 +36,8 @@
     <string name="speed_kmh">%1$.1f km/h</string>
     <string name="distance_km_format">%1$.1f km</string>
     <string name="duration_min_format">%1$d min</string>
+    <string name="eta_arrived">ETA: Arrived</string>
+    <string name="deadline_expired">Deadline: EXPIRED</string>
     <string name="timer_format">%1$02d:%2$02d:%3$02d</string>
     <string name="journey_ended">Journey Ended</string>
     <string name="id_format">ID: %1$s</string>

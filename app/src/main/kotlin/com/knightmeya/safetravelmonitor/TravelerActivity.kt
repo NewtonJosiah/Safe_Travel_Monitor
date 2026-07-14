@@ -107,7 +107,7 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
                 // 1. Dynamic ETA Countdown
                 val remainingEtaMillis = estimatedArrivalTime - now
                 if (remainingEtaMillis <= 0) {
-                    binding.tvElapsedTime.text = "ETA: Arrived"
+                    binding.tvElapsedTime.text = getString(R.string.eta_arrived)
                 } else {
                     val totalSecs = remainingEtaMillis / 1000
                     val hours = totalSecs / 3600
@@ -119,13 +119,13 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
                 // 2. Fixed Deadline Countdown
                 val remainingDeadlineMillis = deadlineTime - now
                 if (remainingDeadlineMillis <= 0) {
-                    binding.tvDeadlineTime.text = "Deadline: EXPIRED"
-                    binding.tvDeadlineTime.setTextColor(getColor(R.color.destructive))
+                    binding.tvDeadlineTime.text = getString(R.string.deadline_expired)
+                    binding.tvDeadlineTime.setTextColor(ContextCompat.getColor(this@TravelerActivity, R.color.destructive))
                     
                     if (!isArrived && deadlineAlertCount < 3) {
                         sendEmergencyAlert("Traveler has missed the expected arrival deadline!")
                         deadlineAlertCount++
-                        getSharedPreferences("SafeTravelPrefs", Context.MODE_PRIVATE).edit {
+                        getSharedPreferences("SafeTravelPrefs", MODE_PRIVATE).edit {
                             putInt("deadline_alert_count", deadlineAlertCount)
                         }
                     }
@@ -135,7 +135,7 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
                     val minutes = (totalSecs % 3600) / 60
                     val seconds = totalSecs % 60
                     binding.tvDeadlineTime.text = getString(R.string.remaining_time_format, hours, minutes, seconds)
-                    binding.tvDeadlineTime.setTextColor(getColor(R.color.muted_foreground))
+                    binding.tvDeadlineTime.setTextColor(ContextCompat.getColor(this@TravelerActivity, R.color.muted_foreground))
                 }
 
                 // 3. Stationary Detection (10 Minutes)
@@ -144,6 +144,9 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
                     if (stationaryDuration > 10 * 60 * 1000 && !stationaryAlertSent) {
                         sendEmergencyAlert("Stationary Alert: Traveler has not moved for over 10 minutes.")
                         stationaryAlertSent = true
+                        getSharedPreferences("SafeTravelPrefs", MODE_PRIVATE).edit {
+                            putBoolean("stationary_alert_sent", true)
+                        }
                     }
                 }
 
@@ -237,7 +240,12 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
             // Check for significant movement (> 5 meters) to reset stationary timer
             if (distanceMoved > 5f) {
                 lastMovementTimestamp = System.currentTimeMillis()
-                stationaryAlertSent = false
+                if (stationaryAlertSent) {
+                    stationaryAlertSent = false
+                    getSharedPreferences("SafeTravelPrefs", MODE_PRIVATE).edit {
+                        putBoolean("stationary_alert_sent", false)
+                    }
+                }
             }
 
             val timeElapsedHours = (System.currentTimeMillis() - journeyStartTime) / 3600000f
@@ -601,7 +609,7 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
         if (query.isEmpty()) return
         val apiKey = BuildConfig.PLACES_KEY
         
-        if (apiKey.isEmpty() || apiKey == "YOUR_MAPS_API_KEY_HERE") {
+        if (apiKey.isEmpty()) {
             // Fallback to Geocoder if special key is missing
             searchWithGeocoder(query)
             return
@@ -777,12 +785,12 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
         buttons.forEach { (m, btn) ->
             if (m == mode) {
                 // Selected style (Filled)
-                btn.setBackgroundColor(getColor(R.color.primary))
-                btn.setTextColor(getColor(R.color.primary_foreground))
+                btn.setBackgroundColor(ContextCompat.getColor(this, R.color.primary))
+                btn.setTextColor(ContextCompat.getColor(this, R.color.primary_foreground))
             } else {
                 // Unselected style (Tonal-like)
-                btn.setBackgroundColor(getColor(R.color.secondary))
-                btn.setTextColor(getColor(R.color.secondary_foreground))
+                btn.setBackgroundColor(ContextCompat.getColor(this, R.color.secondary))
+                btn.setTextColor(ContextCompat.getColor(this, R.color.secondary_foreground))
             }
         }
 
@@ -908,7 +916,7 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
         routeLine = googleMap?.addPolyline(
             PolylineOptions()
                 .addAll(path)
-                .color(getColor(R.color.primary))
+                .color(ContextCompat.getColor(this, R.color.primary))
                 .width(10f)
                 .pattern(listOf(com.google.android.gms.maps.model.Dash(20f), com.google.android.gms.maps.model.Gap(10f)))
         )
@@ -1063,6 +1071,7 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
             estimatedArrivalTime = prefs.getLong("estimated_arrival_time", 0)
             deadlineTime = prefs.getLong("deadline_time", 0)
             deadlineAlertCount = prefs.getInt("deadline_alert_count", 0)
+            stationaryAlertSent = prefs.getBoolean("stationary_alert_sent", false)
             travelMode = prefs.getString("travel_mode", "driving") ?: "driving"
             
             val destLat = prefs.getFloat("dest_lat", 0f).toDouble()
@@ -1126,6 +1135,7 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
             putLong("estimated_arrival_time", estimatedArrivalTime)
             putLong("deadline_time", deadlineTime)
             putInt("deadline_alert_count", deadlineAlertCount)
+            putBoolean("stationary_alert_sent", false)
             putString("travel_mode", travelMode)
             putFloat("dest_lat", dest.latitude.toFloat())
             putFloat("dest_lng", dest.longitude.toFloat())
@@ -1211,7 +1221,8 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
 
     private fun sendEmergencyAlert(message: String) {
         val mId = monitorId
-        if (mId != null && journeyId != null) {
+        val jId = journeyId
+        if (mId != null && jId != null) {
             val notification = Notification(
                 UUID.randomUUID().toString(),
                 "🚨 EMERGENCY",
@@ -1219,7 +1230,7 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
                 System.currentTimeMillis(),
                 "EMERGENCY_ALERT",
             )
-            database.child("notifications").child(mId).child(journeyId!!).push().setValue(notification)
+            database.child("notifications").child(mId).child(jId).push().setValue(notification)
         }
     }
 }
