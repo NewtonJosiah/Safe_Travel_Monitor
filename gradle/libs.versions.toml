@@ -9,6 +9,7 @@ googleMaps = "20.0.0"
 playServicesLocation = "21.4.0"
 firebaseBom = "34.16.0"
 googleServices = "4.5.0"
+retrofit = "2.9.0"
 secretsGradlePlugin = "2.0.1"
 junit = "4.13.2"
 androidx-test-ext-junit = "1.3.0"
@@ -28,6 +29,8 @@ firebase-database = { group = "com.google.firebase", name = "firebase-database" 
 firebase-auth = { group = "com.google.firebase", name = "firebase-auth" }
 firebase-storage = { group = "com.google.firebase", name = "firebase-storage" }
 coil = { group = "io.coil-kt", name = "coil", version = "2.7.0" }
+retrofit = { group = "com.squareup.retrofit2", name = "retrofit", version.ref = "retrofit" }
+retrofit-converter-gson = { group = "com.squareup.retrofit2", name = "converter-gson", version.ref = "retrofit" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-test-ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidx-test-ext-junit" }
 espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espresso-core" }
