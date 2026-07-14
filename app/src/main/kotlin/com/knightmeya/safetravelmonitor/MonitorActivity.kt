@@ -28,6 +28,7 @@ import com.google.firebase.database.*
 import com.knightmeya.safetravelmonitor.databinding.ActivityMonitorBinding
 import com.knightmeya.safetravelmonitor.models.*
 import com.knightmeya.safetravelmonitor.utils.NotificationHelper
+import androidx.core.content.ContextCompat
 import kotlin.math.atan2
 import kotlin.math.max
 
@@ -83,10 +84,10 @@ class MonitorActivity : AppCompatActivity(), OnMapReadyCallback {
 
                 if (remainingDeadlineMillis <= 0) {
                     binding.overdueWarning.visibility = View.VISIBLE
-                    binding.tvDeadlineCountdown.setTextColor(getColor(R.color.destructive))
+                    binding.tvDeadlineCountdown.setTextColor(ContextCompat.getColor(this@MonitorActivity, R.color.destructive))
                 } else {
                     binding.overdueWarning.visibility = View.GONE
-                    binding.tvDeadlineCountdown.setTextColor(getColor(R.color.destructive)) // Keep red for deadline?
+                    binding.tvDeadlineCountdown.setTextColor(ContextCompat.getColor(this@MonitorActivity, R.color.destructive)) // Keep red for deadline?
                 }
                 
                 handler.postDelayed(this, 1000)
@@ -108,10 +109,9 @@ class MonitorActivity : AppCompatActivity(), OnMapReadyCallback {
         setupUI()
         listenForMonitoringRequests()
         
-        val incomingJourneyId = intent.getStringExtra("EXTRA_JOURNEY_ID")
-        if (incomingJourneyId != null) {
+        intent.getStringExtra("EXTRA_JOURNEY_ID")?.let {
             // Priority: Explicitly requested journey (e.g., from notification/dialog)
-            listenForJourney(incomingJourneyId)
+            listenForJourney(it)
         }
     }
 
@@ -194,7 +194,7 @@ class MonitorActivity : AppCompatActivity(), OnMapReadyCallback {
             title = "🚨 MONITOR SOS",
             message = message,
             timestamp = System.currentTimeMillis(),
-            type = "EMERGENCY_ALERT"
+            type = "EMERGENCY_ALERT",
         )
         // Per revised rules, Monitor can write to notifications node
         database.child("notifications").child(currentUid).child(jId).push().setValue(notification)
@@ -202,7 +202,7 @@ class MonitorActivity : AppCompatActivity(), OnMapReadyCallback {
 
     private fun toggleMapMaximize() {
         val mapCard = binding.monitorMapCard
-        val root = binding.root as ViewGroup
+        val root = (binding.root as? ViewGroup) ?: return
         
         if (!isMapMaximized) {
             // Maximize
@@ -355,21 +355,22 @@ class MonitorActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
     private fun removeMonitoredListeners() {
-        val jId = monitoredJourneyId ?: return
-        activeLocationListener?.let {
-            database.child("monitor_locations").child(currentUid).child(jId).removeEventListener(it)
-        }
-        activeNotificationListener?.let {
-            database.child("notifications").child(currentUid).child(jId).removeEventListener(it)
-        }
-        
-        // Fix #13: Remove ETA listener separately
-        etaListener?.let {
-            try {
-                database.child("monitor_journeys").child(currentUid).child(jId).child("estimatedArrivalTime")
-                    .removeEventListener(it)
-            } catch (_: Exception) {
-                Log.d("MonitorActivity", "Could not remove ETA listener")
+        monitoredJourneyId?.let { jId ->
+            activeLocationListener?.let {
+                database.child("monitor_locations").child(currentUid).child(jId).removeEventListener(it)
+            }
+            activeNotificationListener?.let {
+                database.child("notifications").child(currentUid).child(jId).removeEventListener(it)
+            }
+            
+            // Fix #13: Remove ETA listener separately
+            etaListener?.let {
+                try {
+                    database.child("monitor_journeys").child(currentUid).child(jId).child("estimatedArrivalTime")
+                        .removeEventListener(it)
+                } catch (_: Exception) {
+                    Log.d("MonitorActivity", "Could not remove ETA listener")
+                }
             }
         }
         
@@ -403,7 +404,7 @@ class MonitorActivity : AppCompatActivity(), OnMapReadyCallback {
         // UI Badges Reset
         binding.badgeActive.visibility = View.VISIBLE
         binding.badgeEnded.visibility = View.GONE
-        binding.tvRemainingTime.setTextColor(getColor(R.color.traveler_header_start))
+        binding.tvRemainingTime.setTextColor(ContextCompat.getColor(this, R.color.traveler_header_start))
         
         // Solution 3: Defensive Data Casting (Double/Long safety)
         database.child("monitor_locations").child(monitorId).child(journey.id).get().addOnSuccessListener { snapshot ->
@@ -473,13 +474,16 @@ class MonitorActivity : AppCompatActivity(), OnMapReadyCallback {
         database.child("monitor_journeys").child(monitorId).child(journey.id).child("estimatedArrivalTime")
             .addValueEventListener(etaListener!!)
 
-        val deadlineRef = database.child("monitor_journeys").child(monitorId).child(journey.id).child("deadlineTime")
-        deadlineRef.addValueEventListener(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                deadlineTime = (snapshot.value as? Number)?.toLong() ?: 0L
-            }
-            override fun onCancelled(error: DatabaseError) {}
-        })
+        database.child("monitor_journeys").child(monitorId).child(journey.id).child("deadlineTime")
+            .addValueEventListener(
+                object : ValueEventListener {
+                    override fun onDataChange(snapshot: DataSnapshot) {
+                        deadlineTime = (snapshot.value as? Number)?.toLong() ?: 0L
+                    }
+
+                    override fun onCancelled(error: DatabaseError) {}
+                },
+            )
 
         activeNotificationListener = object : ChildEventListener {
             override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
@@ -560,14 +564,14 @@ class MonitorActivity : AppCompatActivity(), OnMapReadyCallback {
         
         val polyToUse = polyline ?: lastPolyline
         
-        if (polyToUse != null && polyToUse.isNotEmpty()) {
+        if (!polyToUse.isNullOrEmpty()) {
             lastPolyline = polyToUse
             val path = decodePolyline(polyToUse)
             if (routeLine == null) {
                 routeLine = googleMap?.addPolyline(
                     com.google.android.gms.maps.model.PolylineOptions()
                         .addAll(path)
-                        .color(getColor(R.color.primary))
+                        .color(ContextCompat.getColor(this, R.color.primary))
                         .width(8f)
                         .pattern(listOf(com.google.android.gms.maps.model.Dash(20f), com.google.android.gms.maps.model.Gap(10f)))
                 )
@@ -582,7 +586,7 @@ class MonitorActivity : AppCompatActivity(), OnMapReadyCallback {
                 routeLine = googleMap?.addPolyline(
                     com.google.android.gms.maps.model.PolylineOptions()
                         .add(start, end)
-                        .color(getColor(R.color.primary))
+                        .color(ContextCompat.getColor(this, R.color.primary))
                         .width(8f)
                         .pattern(listOf(com.google.android.gms.maps.model.Dash(20f), com.google.android.gms.maps.model.Gap(10f)))
                 )
@@ -659,7 +663,7 @@ class MonitorActivity : AppCompatActivity(), OnMapReadyCallback {
         binding.badgeEnded.visibility = View.VISIBLE
         
         binding.tvRemainingTime.text = getString(R.string.zero_time)
-        binding.tvRemainingTime.setTextColor(getColor(R.color.muted_foreground))
+        binding.tvRemainingTime.setTextColor(ContextCompat.getColor(this, R.color.muted_foreground))
         binding.overdueWarning.visibility = View.GONE
         
         // Optional: clear markers or show final state

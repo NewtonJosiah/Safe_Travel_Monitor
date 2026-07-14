@@ -78,6 +78,7 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
     private var currentBatteryLevel = 0
     private var lastMovementTimestamp: Long = 0L
     private var stationaryAlertSent = false
+    private var deadlineAlertCount = 0
 
     private val auth = FirebaseAuth.getInstance()
     private val database = FirebaseDatabase.getInstance().reference
@@ -121,8 +122,12 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
                     binding.tvDeadlineTime.text = "Deadline: EXPIRED"
                     binding.tvDeadlineTime.setTextColor(getColor(R.color.destructive))
                     
-                    if (!isArrived) {
+                    if (!isArrived && deadlineAlertCount < 3) {
                         sendEmergencyAlert("Traveler has missed the expected arrival deadline!")
+                        deadlineAlertCount++
+                        getSharedPreferences("SafeTravelPrefs", Context.MODE_PRIVATE).edit {
+                            putInt("deadline_alert_count", deadlineAlertCount)
+                        }
                     }
                 } else {
                     val totalSecs = remainingDeadlineMillis / 1000
@@ -1057,6 +1062,7 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
             journeyStartTime = prefs.getLong("journey_start_time", 0)
             estimatedArrivalTime = prefs.getLong("estimated_arrival_time", 0)
             deadlineTime = prefs.getLong("deadline_time", 0)
+            deadlineAlertCount = prefs.getInt("deadline_alert_count", 0)
             travelMode = prefs.getString("travel_mode", "driving") ?: "driving"
             
             val destLat = prefs.getFloat("dest_lat", 0f).toDouble()
@@ -1096,6 +1102,7 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
         journeyStartTime = System.currentTimeMillis()
         lastMovementTimestamp = journeyStartTime
         stationaryAlertSent = false
+        deadlineAlertCount = 0
         deadlineTime = estimatedArrivalTime // Deadline is fixed at the start
         totalDistanceCovered = 0f
         averageSpeedKmh = 0f
@@ -1118,6 +1125,7 @@ class TravelerActivity : AppCompatActivity(), OnMapReadyCallback {
             putLong("journey_start_time", journeyStartTime)
             putLong("estimated_arrival_time", estimatedArrivalTime)
             putLong("deadline_time", deadlineTime)
+            putInt("deadline_alert_count", deadlineAlertCount)
             putString("travel_mode", travelMode)
             putFloat("dest_lat", dest.latitude.toFloat())
             putFloat("dest_lng", dest.longitude.toFloat())
